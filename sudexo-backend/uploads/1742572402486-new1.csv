@@ -1,0 +1,4 @@
+name,email,password,pin,amount
+ben,ben@gmail.com,ben123,1234,3000
+kevin,kevin@gmail.com,kevin123,1234,3000
+gwen,gwen@gmail.com,,1234,3000

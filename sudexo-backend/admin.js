@@ -8,6 +8,8 @@ dotenv.config()
 const { hashPassword, verifyPassword } = require('./encrypt_decrypt')
 const { generateAccessToken, authenticateToken } = require('./tokens');
 const { error } = require('console');
+const { resolve } = require('path');
+const { rejects } = require('assert');
 const router = express.Router();
 router.use(express.json())
 const uri = process.env.uri
@@ -341,66 +343,60 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
 router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], async (req, res) => {
     try {
         if (req.file) {
-            console.log(req.file,"This My File ")
-            const datas = [];
-            let fileError = null
-            await fs.createReadStream(`./uploads/${req.file.filename}`)
-                .pipe(
-                    parse({
-                        delimiter: ",",
-                        columns: true,
-                        ltrim: true,
-                    })
+            function getData() {
+                const datas = [];
+                return new Promise((resolve,rejects)=>{
+                    fs.createReadStream(`./uploads/${req.file.filename}`)
+                        .pipe(
+                            parse({
+                                delimiter: ",",
+                                columns: true,
+                                ltrim: true,
+                            })
+                        )
+                        .on("data", function (row) {
+                            datas.push(row);
+                        })
+                        .on("error", function (error) {
+                            console.log(error.message);
+                            rejects(error.message)
+                        })
+                        .on("end", function () {
+                            resolve(datas)
+                        })
+                    }
                 )
-                .on("data", async function (row) {
-                   await datas.push(row);
-                })
-                .on("error", function (error) {
-                    console.log(error.message);
-                    fileError = error.message
-                })
-                .on("end", function () {
-                    console.log("File parsing complete. Parsed rows:", datas.length); // Debugging line
-                });
+            }
 
-        
             if (req.user) {
-             
+                let datas
+                let fileError
+                try{
+                 datas = await getData()
+                }
+                catch(error){
+                    fileError = error
+                }
                 await client.connect()
-                console.log(datas.length,"this My datas starting")
-                console.log(datas,"this My datas starting")
                 const Db = client.db(dbName)
                 const collection = Db.collection('EmployeeUsers')
                 const emails = (await collection.find().project({ email: 1, _id: 0 }).toArray()).map(item => { return item.email })
-                if (datas.length >= 1 && !fileError) {
+                if (!fileError && datas.length >= 1) {
                     const result = []
                     const validEmp = []
-                    let inc = 0
                     async function processData() {
-                        console.log("Email Lenth Beofre calling CreateEmp",emails.length)
-                        console.log(datas.length,"This datas ")
                         const promises = datas.map(async (data) => {
-                            inc = inc +1
-                            console.log(inc,"I AM Inc")
                             const temp = await createEmployee(data, emails, req.user.id)
-                            console.log(temp,"temp Result")
                             if (temp.newEmp) {
-                                console.log("New Temp")
-                                validEmp.push(temp.newEmp)}
-                           
+                                validEmp.push(temp.newEmp)
+                            }
                             result.push({ "email": data.email, "result": temp.result })
-                            
-                        })
 
+                        })
                         await Promise.all(promises);
                         final();
-                        disp()
                     }
                     processData()
-                    function disp(){
-                        // console.log("resullt",result)
-                        // console.log("validemp",validEmp)
-                    }
                     const final = async () => {
                         if (validEmp.length >= 1) {
                             const acknowledgement = await collection.insertMany(validEmp)
@@ -472,8 +468,8 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
         }
 
     } catch (error) {
-        res.send('error')
         console.error(error)
+        res.send('error')  
     }
     finally {
 
@@ -485,8 +481,6 @@ async function createEmployee(data, emails, admin_id) {
         const { name, email, password, pin, amount } = data
         const errors = []
         if (name && email && password && pin) {
-            console.log(emails)
-            console.log(emails.length,"Email Length")
             if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 if (parseInt(pin)) {
                     const hashedPassword = await hashPassword(password)
@@ -501,9 +495,7 @@ async function createEmployee(data, emails, admin_id) {
                     }
 
                     if (!emails.includes(email)) {
-                        console.log('bofore',emails)
                         emails.push(email)
-                        console.log('after',emails)
                         return ({
                             "result": {
                                 "status": "success",
@@ -513,18 +505,20 @@ async function createEmployee(data, emails, admin_id) {
                         })
                     }
                     else {
-                        return ({"result":{
-                            "status": "error",
-                            "message": "Email already in use",
-                            "description": "The request could not be completed due to a conflict with the current state of the resource",
-                            "errors": [
-                                {
-                                    "field": "email",
-                                    "error": "This email is already registered. Please use a different one."
-                                }
-                            ],
-                            "status_code": 409
-                        }, newEmp: null})
+                        return ({
+                            "result": {
+                                "status": "error",
+                                "message": "Email already in use",
+                                "description": "The request could not be completed due to a conflict with the current state of the resource",
+                                "errors": [
+                                    {
+                                        "field": "email",
+                                        "error": "This email is already registered. Please use a different one."
+                                    }
+                                ],
+                                "status_code": 409
+                            }, newEmp: null
+                        })
 
                     }
 
@@ -566,13 +560,15 @@ async function createEmployee(data, emails, admin_id) {
         }
 
         if (errors.length >= 1) {
-            return ({"result":{
+            return ({
+                "result": {
                     "status": "error",
                     "message": "Invalid input",
                     "description": "Invalid syntax for this request was provided",
                     "errors": errors,
                     "status_code": 400
-                }, newEmp: null})
+                }, newEmp: null
+            })
         }
 
 
