@@ -7,9 +7,7 @@ const { parse } = require("csv-parse");
 dotenv.config()
 const { hashPassword, verifyPassword } = require('./encrypt_decrypt')
 const { generateAccessToken, authenticateToken } = require('./tokens');
-const { error } = require('console');
-const { resolve } = require('path');
-const { rejects } = require('assert');
+const e = require('cors');
 const router = express.Router();
 router.use(express.json())
 const uri = process.env.uri
@@ -210,6 +208,9 @@ router.post('/login', async (req, res) => {
     } catch (error) {
 
     }
+    finally {
+        client.close()
+    }
 })
 
 router.post('/createEmployee', authenticateToken, async (req, res) => {
@@ -229,7 +230,7 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
                             email: email,
                             password: hashedPassword,
                             pin: pin,
-                            balance: Number(amount) ? amount : 0
+                            balance: Number(amount) ? Number(amount) : 0
                         }
 
                         await client.connect()
@@ -330,6 +331,7 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
                     "status_code": 401
                 }
             )
+            return
         }
     } catch (error) {
         console.log(error)
@@ -345,7 +347,7 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
         if (req.file) {
             function getData() {
                 const datas = [];
-                return new Promise((resolve,rejects)=>{
+                return new Promise((resolve, rejects) => {
                     fs.createReadStream(`./uploads/${req.file.filename}`)
                         .pipe(
                             parse({
@@ -364,17 +366,17 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
                         .on("end", function () {
                             resolve(datas)
                         })
-                    }
+                }
                 )
             }
 
             if (req.user) {
                 let datas
                 let fileError
-                try{
-                 datas = await getData()
+                try {
+                    datas = await getData()
                 }
-                catch(error){
+                catch (error) {
                     fileError = error
                 }
                 await client.connect()
@@ -469,7 +471,7 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
 
     } catch (error) {
         console.error(error)
-        res.send('error')  
+        res.send('error')
     }
     finally {
 
@@ -491,7 +493,7 @@ async function createEmployee(data, emails, admin_id) {
                         email: email,
                         password: hashedPassword,
                         pin: pin,
-                        balance: Number(amount) ? amount : 0
+                        balance: Number(amount) ? Number(amount) : 0
                     }
 
                     if (!emails.includes(email)) {
@@ -577,6 +579,390 @@ async function createEmployee(data, emails, admin_id) {
     }
 
 }
+
+router.post('/addAmount', authenticateToken, async (req, res) => {
+    try {
+
+        if (req.user) {
+            const { employee_id, amount } = req.body
+            const errors = []
+            if (employee_id && amount) {
+
+                if (Number(amount)) {
+                    await client.connect()
+                    const Db = client.db(dbName)
+                    const collection = Db.collection('EmployeeUsers')
+                    // const employee = await collection.findOne({ id: employee_id })
+                    const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                        $set: {
+                            balance: {
+                                $cond: {
+                                    if: { $eq: ["$admin_id", req.user.id] },
+                                    then: { $add: ["$balance", Number(amount)] },
+                                    else: "$balance"
+                                }
+                            }
+                        }
+                    }
+                    ]
+                    )
+
+                    if (employee) {
+                        if (req.user.id === employee.admin_id) {
+
+                            const transaction = {
+                                id: `T${Date.now()}`,
+                                from_id: req.user.id,
+                                admin_id: null,
+                                to_id: employee_id,
+                                type: 'CR',
+                                amount: Number(amount),
+                                date_time: new Date()
+                            }
+                            const result = await Db.collection('Transaction').insertOne(transaction)
+                            if (result.acknowledged === true) {
+                                res.status(200).json({
+                                    "status": "success",
+                                    "message": "Amount Added ",
+                                    "description": "Amounnt added successful.",
+                                    "status_code": 200
+                                })
+                                return
+                            }
+                            else {
+                                res.status(500).json(
+                                    {
+                                        "status": "error",
+                                        "message": "INTERNAL SERVER ERROR",
+                                        "description": "Unexpected internal server error",
+                                        "status_code": 500
+                                    }
+                                )
+                            }
+                            return
+                        }
+                        else {
+                            res.status(401).send({
+                                "status": "error",
+                                "message": "invalid admin",
+                                "description": "You are unauthorized to access the requested resource",
+                                "errors": [{
+                                    "error": 'you are not the admin of this Account'
+                                }],
+                                "status_code": 401
+                            })
+                            return
+                        }
+                    }
+                    else {
+                        res.status(404).json(
+                            {
+                                "status": "error",
+                                "message": "employee not found",
+                                "description": "We could not find the resource you requested",
+                                "errors": [{
+                                    "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                                }],
+                                "status_code": 404
+                            })
+                        return
+                    }
+                }
+                else {
+                    errors.push({
+                        "field": "amount",
+                        "error": "Amount Must be Number"
+                    })
+                }
+            }
+            else {
+                if (!employee_id)
+                    errors.push({
+                        "field": "employee_id",
+                        "error": "This field is required"
+                    })
+                if (!amount)
+                    errors.push({
+                        "field": "amount",
+                        "error": "This field is required"
+                    })
+            }
+            if (errors.length >= 1) {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": errors,
+                        "status_code": 400
+                    }
+                )
+                return
+
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        client.close()
+    }
+})
+
+router.get('/employee', authenticateToken, async (req, res) => {
+    try {
+        if (req.user) {
+            const employee_id = req.query.employee_id
+            if (employee_id) {
+
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                const employee = (await collection.find({ id: employee_id }).project({ _id: 0, password: 0, pin: 0 }).toArray())[0]
+                if (employee) {
+                    if (employee.admin_id === req.user.id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "employee details ",
+                            "description": "employee details fetched successful.",
+                            "data": employee,
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
+            }
+            else {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": [{
+                            "field": "employee_id",
+                            "error": "This field is required"
+                        }],
+                        "status_code": 400
+                    }
+                )
+                return
+
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        client.close()
+    }
+
+})
+
+router.get('/transactions', authenticateToken, async (req, res) => {
+    try {
+        if (req.user) {
+            const employee_id = req.query.employee_id
+            const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
+            const pages = 3
+            if (employee_id) {
+                client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('Transaction')
+                const result = await collection.aggregate([
+                    {
+                        $match: {
+                            $or: [{ from_id: employee_id }, { to_id: employee_id }]
+                        }
+                    },
+                    {
+                        $facet: {
+                            count: [{ $count: 'totalcount' }],
+                            data: [{ $skip: (pages * (page_no - 1)) }, { $limit: pages }],
+                        }
+                    }
+
+                ]).toArray()
+                const total_page = Math.ceil(result[0].count[0].totalcount / pages)
+                if (result) {
+                    res.status(200).json({
+                        "status": "success",
+                        "message": "transactions",
+                        "description": "Transactions fetched successful.",
+
+                        "result": {
+                            "total_page": total_page,
+                            "current_page": page_no,
+                            "data": result[0].data
+                        },
+                        "status_code": 200
+                    })
+                    return
+                }
+
+            }
+            else {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": [{
+                            "field": "employee_id",
+                            "error": "This field is required"
+                        }],
+                        "status_code": 400
+                    }
+                )
+                return
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+    }
+    finally {
+        client.close()
+    }
+})
+
+router.get('/employees', authenticateToken, async (req, res) => {
+    try {
+        if (req.user) {
+            const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
+            const pages = 3
+            await client.connect()
+            const Db = client.db(dbName)
+            const collection = Db.collection('EmployeeUsers')
+            const result = await collection.aggregate([
+                {
+                    $match: {
+                        admin_id:req.user.id
+                    }
+                },
+                {
+                    $project:{_id:0,pin:0,password:0}
+                },
+                {
+                    $facet: {
+                        count: [{ $count: 'totalcount' }],
+                        data: [{ $skip: (pages * (page_no - 1)) }, { $limit: pages }],
+                    }
+                }
+
+            ]).toArray()
+            const total_page = Math.ceil(result[0].count[0].totalcount / pages)
+            if (result) {
+                res.status(200).json({
+                    "status": "success",
+                    "message": "Employees fetched",
+                    "description": "Employees fetched successful.",
+
+                    "result": {
+                        "total_page": total_page,
+                        "current_page": page_no,
+                        "data": result[0].data
+                    },
+                    "status_code": 200
+                })
+                return
+            }
+
+
+
+
+
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        client.close()
+    }
+
+})
+
 
 
 
