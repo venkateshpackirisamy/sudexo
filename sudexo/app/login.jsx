@@ -7,17 +7,37 @@ import { useState } from "react";
 import { router } from 'expo-router';
 const { height, width } = Dimensions.get('window');
 export default function Index() {
-  const [email, setEmail] = useState()
-  const [password, setPassword] = useState()
-  const [role, setRole] = useState('employee'); 
-  function login(){
-    if(role=='employee'){
-      router.push('/EmpHome')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('employee');
+  const[error_email,setEmailError] = useState('')
+  const[error_password,setPasswordError] = useState('')
+  function login() {
+    if (email && password) {
+      setEmailError('');setPasswordError('')
+      if (role == 'employee') {
+        router.push('/EmpHome')
+      }
+      else {
+        router.push('/AdminHome')
+      }
     }
     else{
-      router.push('/AdminHome')
+      if(email===""){
+        setEmailError('* email is requried ')
+      }
+      else{
+        setEmailError('')
+      }
+      if(password===''){
+        setPasswordError("*password is requried")
+      }
+      else{
+        setPasswordError('')
+      }
     }
   }
+
 
   return (
     <SafeAreaProvider>
@@ -27,20 +47,21 @@ export default function Index() {
           <Text style={styles.title}>Login</Text>
           <View style={styles.roles}>
             <TouchableOpacity
-            style={[styles.rbutton, role === 'admin' && styles.selectedRole]}
-            onPress={() => setRole('admin')}
-          >
-            <Text style={styles.rbuttonText}>Admin</Text>
-          </TouchableOpacity>
+              style={[styles.rbutton, role === 'admin' && styles.selectedRole]}
+              onPress={() => setRole('admin')}
+            >
+              <Text style={styles.rbuttonText}>Admin</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.rbutton, role === 'employee' && styles.selectedRole]}
-            onPress={() => setRole('employee')}
-          >
-            <Text style={styles.rbuttonText}>Employee</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.rbutton, role === 'employee' && styles.selectedRole]}
+              onPress={() => setRole('employee')}
+            >
+              <Text style={styles.rbuttonText}>Employee</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.form}>
+            <Text style={styles.errorText}>{error_email}</Text>
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -48,7 +69,7 @@ export default function Index() {
               value={email}
               onChangeText={(text) => setEmail(text)}
             />
-
+            <Text style={styles.errorText}>{error_password}</Text>
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -65,7 +86,7 @@ export default function Index() {
           </View>
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={()=>{router.push('/register')}}>
+            <TouchableOpacity onPress={() => { router.push('/register') }}>
               <Text style={styles.footerLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -90,17 +111,17 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 5
   },
-  roles:{
-    flexDirection:"row"
+  roles: {
+    flexDirection: "row"
   },
   rbutton: {
-    width: width*0.41,
+    width: width * 0.41,
     padding: 15,
     backgroundColor: 'white',
     alignItems: 'center',
-    borderWidth:1,
+    borderWidth: 1,
     borderColor: '#ddd',
- 
+
   },
   rbuttonText: {
     fontSize: 18,
@@ -161,4 +182,9 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginLeft: 5,
   },
+  errorText:{
+    color:'red',
+    fontSize:14
+
+  }
 });
