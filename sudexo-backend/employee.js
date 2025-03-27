@@ -29,7 +29,8 @@ router.post('/login', async (req, res) => {
                         "message": "Login successful",
                         "description": "Login successful. Welcome back!",
                         "data": {
-                            "token": token
+                            "token": token,
+                            "name": login.name
                         },
                         "status_code": 200
                     })
@@ -56,7 +57,7 @@ router.post('/login', async (req, res) => {
                         "message": "Email not found",
                         "description": "We could not find the resource you requested",
                         "errors": [{
-                            "field": "password",
+                            "field": "email",
                             "error": 'The email address provided does not exist in our records. Please check the email and try again.'
                         }],
                         "status_code": 404
@@ -338,7 +339,7 @@ router.get('/transactions', authenticateToken, async (req, res) => {
     try {
         if (req.user) {
             const page_no = (parseInt(req.query.page_no)&&req.query.page_no>0)?parseInt(req.query.page_no):1
-            const pages = 3
+            const pages = 8
             client.connect()
             const Db = client.db(dbName)
             const collection = Db.collection('Transaction')

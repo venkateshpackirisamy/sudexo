@@ -9,9 +9,9 @@ dotenv.config()
 const port = process.env.port
 
 const app = express()
+app.use(cors())
 app.use('/admin', admin);   
 app.use('/employee', employee);
-app.use(cors())
 app.use(express.json())
 
 
