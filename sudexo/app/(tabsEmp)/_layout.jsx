@@ -18,6 +18,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="transaction"
                 options={{
+                    headerShown: false ,
                     title: 'Transaction',
                     tabBarIcon: ({ color, focused }) => (
 

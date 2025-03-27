@@ -3,36 +3,92 @@ import { Text, View, Dimensions, StyleSheet, SafeAreaView, TextInput, TouchableO
 import { Picker } from '@react-native-picker/picker'
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const { height, width } = Dimensions.get('window');
+const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function Index() {
+  useEffect(()=>{
+    checkuser()
+    .then(res=>{
+      if(res)
+        router.push('/EmpHome')
+    })
+  },[])
+  const checkuser = async()=>{
+    const token =  await AsyncStorage.getItem('@userToken');
+    return token
+  }
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('employee');
-  const[error_email,setEmailError] = useState('')
-  const[error_password,setPasswordError] = useState('')
+  const [error_email, setEmailError] = useState('')
+  const [error_password, setPasswordError] = useState('')
+  const storeUserToken = async (token,name) => {
+    try {
+      await AsyncStorage.setItem('@userToken', token);
+      await AsyncStorage.setItem('@userName', name);
+      console.log('token strored')
+    } catch (e) {
+      console.error('Error storing token in AsyncStorage:', e);
+    }
+  };
   function login() {
     if (email && password) {
-      setEmailError('');setPasswordError('')
+      setEmailError(''); setPasswordError('')
       if (role == 'employee') {
-        router.push('/EmpHome')
+        fetch(`${uri}/employee/login`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            method: "POST",
+            body: JSON.stringify({ email: email, password: password })
+          })
+          .then(function (res) {
+            res.json()
+              .then(data => {
+
+                if (data.status === 'error') {
+                  data.errors.forEach(element => {
+                    if (element.field == 'email')
+                      setEmailError('The email address provided does not exist in our records')
+                    if (element.field == 'password')
+                      setPasswordError('The password you entered is incorrect')
+                  });
+                }
+                else if (data.data) {
+                  storeUserToken(data.data.token,data.data.name)
+                  .then(
+                    router.push('/EmpHome')
+                  )
+                  
+                }
+              })
+          })
+          .catch(function (res) { console.log('errror') })
+
+
+
       }
       else {
         router.push('/AdminHome')
       }
     }
-    else{
-      if(email===""){
+    else {
+      if (email === "") {
         setEmailError('* email is requried ')
       }
-      else{
+      else {
         setEmailError('')
       }
-      if(password===''){
+      if (password === '') {
         setPasswordError("*password is requried")
       }
-      else{
+      else {
         setPasswordError('')
       }
     }
@@ -182,9 +238,9 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginLeft: 5,
   },
-  errorText:{
-    color:'red',
-    fontSize:14
+  errorText: {
+    color: 'red',
+    fontSize: 14
 
   }
 });
