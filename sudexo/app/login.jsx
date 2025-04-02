@@ -1,6 +1,4 @@
-import { Link } from "expo-router";
 import { Text, View, Dimensions, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, } from "react-native";
-import { Picker } from '@react-native-picker/picker'
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
@@ -9,16 +7,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function Index() {
-  useEffect(()=>{
+  useEffect(() => {
     checkuser()
-    .then(res=>{
-      if(res)
-        router.push('/EmpHome')
-    })
-  },[])
-  const checkuser = async()=>{
-    const token =  await AsyncStorage.getItem('@userToken');
-    return token
+      .then(res => {
+        if (res.token && res.admin==='false')
+          router.push('/EmpHome')
+        else if(res.token && res.admin==='true')
+          router.push('/AdminHome')
+      })
+  }, [])
+  const checkuser = async () => {
+    const token = await AsyncStorage.getItem('@userToken');
+    const is_admin= await AsyncStorage.getItem('is_admin');
+    return {'token':token,'admin':is_admin}
   }
 
   const [email, setEmail] = useState('')
@@ -26,15 +27,18 @@ export default function Index() {
   const [role, setRole] = useState('employee');
   const [error_email, setEmailError] = useState('')
   const [error_password, setPasswordError] = useState('')
-  const storeUserToken = async (token,name) => {
+  const storeUserToken = async (token, name,is_admin) => {
     try {
+      await AsyncStorage.clear()
       await AsyncStorage.setItem('@userToken', token);
       await AsyncStorage.setItem('@userName', name);
+      await AsyncStorage.setItem('is_admin', is_admin);
       console.log('token strored')
     } catch (e) {
       console.error('Error storing token in AsyncStorage:', e);
     }
   };
+
   function login() {
     if (email && password) {
       setEmailError(''); setPasswordError('')
@@ -61,11 +65,11 @@ export default function Index() {
                   });
                 }
                 else if (data.data) {
-                  storeUserToken(data.data.token,data.data.name)
-                  .then(
-                    router.push('/EmpHome')
-                  )
-                  
+                  storeUserToken(data.data.token, data.data.name,"false")
+                    .then(
+                      router.push('/EmpHome')
+                    )
+
                 }
               })
           })
@@ -75,7 +79,38 @@ export default function Index() {
 
       }
       else {
-        router.push('/AdminHome')
+        fetch(`${uri}/admin/login`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            method: "POST",
+            body: JSON.stringify({ email: email, password: password })
+          })
+          .then(function (res) {
+            res.json()
+              .then(data => {
+
+                if (data.status === 'error') {
+                  data.errors.forEach(element => {
+                    if (element.field == 'email')
+                      setEmailError('The email address provided does not exist in our records')
+                    if (element.field == 'password')
+                      setPasswordError('The password you entered is incorrect')
+                  });
+                }
+                else if (data.data) {
+                  storeUserToken(data.data.token, data.data.name,"true")
+                    .then(
+                      router.push('/AdminHome')
+                    )
+
+                }
+              })
+          })
+          .catch(function (res) { console.log('errror') })
+
       }
     }
     else {
@@ -140,12 +175,14 @@ export default function Index() {
             </TouchableOpacity>
 
           </View>
-          <View style={styles.footer}>
+
+         {role === 'admin' && <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
             <TouchableOpacity onPress={() => { router.push('/register') }}>
               <Text style={styles.footerLink}>Sign Up</Text>
             </TouchableOpacity>
-          </View>
+          </View>}
+
         </View>
       </SafeAreaView>
 

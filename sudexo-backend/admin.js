@@ -8,6 +8,7 @@ dotenv.config()
 const { hashPassword, verifyPassword } = require('./encrypt_decrypt')
 const { generateAccessToken, authenticateToken } = require('./tokens');
 const e = require('cors');
+const { error } = require('console');
 const router = express.Router();
 router.use(express.json())
 const uri = process.env.uri
@@ -146,7 +147,8 @@ router.post('/login', async (req, res) => {
                         "message": "Login successful",
                         "description": "Login successful. Welcome back!",
                         "data": {
-                            "token": token
+                            "token": token,
+                            "name": login.name
                         },
                         "status_code": 200
                     })
@@ -173,7 +175,7 @@ router.post('/login', async (req, res) => {
                         "message": "Email not found",
                         "description": "We could not find the resource you requested",
                         "errors": [{
-                            "field": "password",
+                            "field": "email",
                             "error": 'The email address provided does not exist in our records. Please check the email and try again.'
                         }],
                         "status_code": 404
@@ -413,11 +415,11 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
                                 )
                                 return
                             }
-                            res.status(407).json(result)
+                            res.status(207).json(result)
                             return
                         }
                         else {
-                            res.status(407).json(result)
+                            res.status(207).json(result)
                             return
                         }
                     }
@@ -728,11 +730,13 @@ router.get('/employee', authenticateToken, async (req, res) => {
         if (req.user) {
             const employee_id = req.query.employee_id
             if (employee_id) {
-
                 await client.connect()
                 const Db = client.db(dbName)
                 const collection = Db.collection('EmployeeUsers')
-                const employee = (await collection.find({ id: employee_id }).project({ _id: 0, password: 0, pin: 0 }).toArray())[0]
+                const employees = await collection.find({ id: employee_id }).project({ _id: 0, password: 0, pin: 0 }).toArray()
+                client.close()
+                
+                const employee = employees[0]
                 if (employee) {
                     if (employee.admin_id === req.user.id) {
                         res.status(200).json({
@@ -785,6 +789,94 @@ router.get('/employee', authenticateToken, async (req, res) => {
                     }
                 )
                 return
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        // client.close()
+    }
+
+})
+
+router.get('/employeeByMail', authenticateToken, async (req, res) => {
+    try {
+        if (req.user) {
+            const email_id = req.query.email
+            if (email_id) {
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                const employees = await collection.find({ email: email_id }).project({ _id: 0, password: 0, pin: 0 }).toArray()
+                const employee = employees[0]
+                if (employee) {
+                    if (employee.admin_id === req.user.id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "employee details ",
+                            "description": "employee details fetched successful.",
+                            "data": employee,
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
+            }
+            else {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": [{
+                            "field": "email id",
+                            "error": "This field is required"
+                        }],
+                        "status_code": 400
+                    }
+                )
+                return
 
             }
         }
@@ -812,12 +904,13 @@ router.get('/employee', authenticateToken, async (req, res) => {
 
 })
 
+
 router.get('/transactions', authenticateToken, async (req, res) => {
     try {
         if (req.user) {
             const employee_id = req.query.employee_id
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
-            const pages = 3
+            const pages = 5
             if (employee_id) {
                 client.connect()
                 const Db = client.db(dbName)
@@ -829,6 +922,9 @@ router.get('/transactions', authenticateToken, async (req, res) => {
                         }
                     },
                     {
+                        $sort: { date_time: -1 }
+                    },
+                    {
                         $facet: {
                             count: [{ $count: 'totalcount' }],
                             data: [{ $skip: (pages * (page_no - 1)) }, { $limit: pages }],
@@ -836,7 +932,12 @@ router.get('/transactions', authenticateToken, async (req, res) => {
                     }
 
                 ]).toArray()
-                const total_page = Math.ceil(result[0].count[0].totalcount / pages)
+                let total_page
+                if (result[0].count[0]?.totalcount)
+                    total_page = Math.ceil(result[0].count[0].totalcount / pages)
+                else
+                    total_page = 0
+
                 if (result) {
                     res.status(200).json({
                         "status": "success",
@@ -896,18 +997,18 @@ router.get('/employees', authenticateToken, async (req, res) => {
     try {
         if (req.user) {
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
-            const pages = 3
+            const pages = 5
             await client.connect()
             const Db = client.db(dbName)
             const collection = Db.collection('EmployeeUsers')
             const result = await collection.aggregate([
                 {
                     $match: {
-                        admin_id:req.user.id
+                        admin_id: req.user.id
                     }
                 },
                 {
-                    $project:{_id:0,pin:0,password:0}
+                    $project: { _id: 0, pin: 0, password: 0 }
                 },
                 {
                     $facet: {
@@ -917,7 +1018,12 @@ router.get('/employees', authenticateToken, async (req, res) => {
                 }
 
             ]).toArray()
-            const total_page = Math.ceil(result[0].count[0].totalcount / pages)
+            let total_page
+            if (result[0].count[0]?.totalcount)
+                total_page =  Math.ceil(result[0].count[0].totalcount/pages)
+            else
+                total_page = 0
+
             if (result) {
                 res.status(200).json({
                     "status": "success",
@@ -963,6 +1069,75 @@ router.get('/employees', authenticateToken, async (req, res) => {
 
 })
 
+router.get('/dashBoard', authenticateToken, async (req, res) => {
+    try {
+        if (req.user) {
+            await client.connect()
+            const Db = client.db(dbName)
+            const collection = Db.collection('EmployeeUsers')
+            const result = await collection.aggregate([
+                {
+                    $match: {
+                        admin_id: req.user.id
+                    }
+                },
+                {
+                    $facet: {
+                        total: [{ $count: 'total' }],
+                        LessT1000: [
+                            {$match: {balance: { $lt: 1000 }}},
+                            {$count:"LessT1000"} 
+                        ],
+                        LessT2000: [
+                            {$match: {$and:[{balance: { $lt: 2000 }},{balance: { $gt: 1000 }}]}},
+                            {$count:"LessT2000"} 
+                        ],
+                        GreatT2000: [
+                            {$match:{balance: { $gte: 2000 }}},
+                            {$count:"GreatT2000"} 
+                        ],
+                       
+                    }
+                }
+
+            ]).toArray()
+
+            if (result) {
+                res.status(200).json({
+                    "status": "success",
+                    "message": "Employees fetched",
+                    "description": "Employees fetched successful.",
+
+                    "result": result,
+                    "status_code": 200
+                })
+                return
+            }
+
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        client.close()
+    }
+
+})
 
 
 

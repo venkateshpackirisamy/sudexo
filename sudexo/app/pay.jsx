@@ -1,23 +1,26 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Dimensions, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import ToastManager, { Toast } from "toastify-react-native";
+import colors from "../assets/color";
 const { height, width } = Dimensions.get('window');
-export default function Pin() {
+export default function Pay() {
 
     const item = useLocalSearchParams();
-
     const [Amount, setAmount] = useState('');
 
     const Submit = () => {
-        router.push({ pathname: '/pin', params: { type:'pay',to_id:item.to_id,amount:Amount} })
+        if (Amount)
+            router.push({ pathname: '/pin', params: { type: 'pay', to_id: item.to_id, amount: Amount } })
+        else
+            Toast.error('Enter a Amount')
     }
 
     return (
-
-        <SafeAreaView style={styles.container}>
-            <StatusBar style="dark" />
+        <View style={styles.container}>
+            <StatusBar style='light' backgroundColor={colors.color1} />
+            <ToastManager />
             <View style={styles.haeder}>
                 <Text style={{ fontSize: 20 }}>To:{item.to_id}</Text>
             </View>
@@ -26,12 +29,18 @@ export default function Pin() {
                 <TextInput
                     style={styles.input}
                     value={Amount}
-                    onChangeText={num=>{setAmount(num)}}
+                    onChangeText={num => { setAmount(num) }}
                     keyboardType="numeric"
                     onSubmitEditing={() => { Submit() }}
                 />
             </View>
-        </SafeAreaView>)
+            <View style={{padding:20}}>
+            <TouchableOpacity style={styles.button} onPress={Submit}>
+                <Text style={styles.buttonText}>Next</Text>
+            </TouchableOpacity>
+            </View>
+
+        </View>)
 }
 const styles = StyleSheet.create({
     container: {
@@ -59,5 +68,17 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 18,
         marginBottom: 20,
+    },
+     button: {
+        width: '100%',
+        padding: 15,
+        backgroundColor: '#4CAF50',
+        alignItems: 'center',
+        borderRadius: 5,
+    },
+    buttonText: {
+        fontSize: 18,
+        color: '#fff',
+        fontWeight: 'bold',
     }
 })

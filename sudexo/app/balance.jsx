@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 const uri = process.env.EXPO_PUBLIC_API_URL;
 const BankBalancePage = () => {
@@ -40,13 +40,14 @@ const BankBalancePage = () => {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container}>                                
             { balance!=null && <Text style={styles.title}>Account Balance</Text>}
             {balance!=null && <Text style={styles.balance}>₹{balance}</Text>}
-            {err!=null && <Text style={styles.error}>{err}</Text>}
-            <TouchableOpacity style={styles.button} onPress={()=>{router.replace('/EmpHome')}}>
-                <Text style={styles.buttonText}>Done</Text>
-            </TouchableOpacity>
+            {err!=null && <Text style={styles.error}>{err}</Text>}            
+            { !(balance||err) ?  <ActivityIndicator size="large" color="#00ff00" />
+            :<TouchableOpacity style={styles.button} onPress={()=>{router.replace('/EmpHome')}}>
+                <Text style={styles.buttonText}>Back To Home</Text>
+            </TouchableOpacity>}
         </View>
     );
 };

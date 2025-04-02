@@ -1,10 +1,10 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-
+import colors from '../../assets/color';
 export default function TabLayout() {
     return (
-        <Tabs>
+        <Tabs screenOptions={{ tabBarActiveTintColor:colors.color1 }}>
             <Tabs.Screen
                 name="EmpHome"
                 options={{

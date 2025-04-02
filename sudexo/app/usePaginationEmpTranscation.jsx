@@ -9,7 +9,8 @@ const initialData = {
   totalPages: 1,
 };
 
-const usePagination = () => {
+const usePagination = (emp_id) => {
+
   const [initialLoader, setInitialLoader] = useState(true);
   const [data, setData] = useState(initialData.data);
   const [totalResult, setTotalResult] = useState(initialData.totalResult);
@@ -17,12 +18,11 @@ const usePagination = () => {
   const [totalPages, setTotalPages] = useState(initialData.totalPages);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-
   // Fetch data for a given page
   const fetchData = async (page) => {
     const token = await AsyncStorage.getItem('@userToken');
     try {
-      const response1 = await fetch(`${uri}/employee/transactions?page_no=${page}`, {
+      const response1 = await fetch(`${uri}/admin/transactions?employee_id=${emp_id}&page_no=${page}`, {
         headers: {
             'Content-type': 'application/json',
             'Authorization': `Bearer ${token}`,

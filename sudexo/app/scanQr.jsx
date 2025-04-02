@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Text, View, StyleSheet, Button } from "react-native";
 import { CameraView, Camera } from "expo-camera";
 import { router } from "expo-router";
@@ -16,9 +16,20 @@ export default function App() {
   }, []);
 
   const handleBarcodeScanned = ({ type, data }) => {
-    setScanned(true);
-    console.log(data)
-    router.push({pathname:'/pay',params:{to_id:data}})
+    const regex = /pn=([^&]+)/;
+    const match = data.match(regex);
+    if (match) {
+      setScanned(true);
+      const name = match[1];
+      router.push({ pathname: '/pay', params: { to_id: name } })
+
+      // if (cameraRef.current) {
+      //   cameraRef.current.stopPreview();
+      // }
+
+    } else {
+      console.log("Name not found");
+    }
   };
 
   if (hasPermission === null) {
@@ -30,13 +41,14 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ["qr", "pdf417"],
-        }}
-        style={StyleSheet.absoluteFillObject}
-      />
+      {!scanned && (
+        <CameraView
+          onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          style={StyleSheet.absoluteFillObject}
+        />)}
       {scanned && (
         <Button title={"Tap to Scan Again"} onPress={() => setScanned(false)} />
       )}

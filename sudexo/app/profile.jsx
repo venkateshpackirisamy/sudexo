@@ -21,19 +21,20 @@ export default function Profile() {
     }
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style="light" />
             <TouchableOpacity >
                 <MaterialCommunityIcons name="account-circle" size={200} color="black" />
             </TouchableOpacity>
             <Text style={{fontSize:30}}>{userName}</Text>
-            <TouchableOpacity style={{ alignItems: 'center', justifyContent: "center" ,backgroundColor:'white', width:'90%',height:'15%'}}>
+
+            {/* <TouchableOpacity style={{ alignItems: 'center', justifyContent: "center" ,backgroundColor:'white', width:'90%',height:'15%'}}>
               
                 <FontAwesome6 name="indian-rupee-sign" size={60} color="black" />
                 <View style={{ alignItems: 'center' }}>
                   <Text>Check Balance</Text>
                 </View>
            
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             
             
             <TouchableOpacity style={styles.button} onPress={async () => { await AsyncStorage.clear(); router.replace('/login') }}>

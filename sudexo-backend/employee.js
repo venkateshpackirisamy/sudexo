@@ -350,6 +350,9 @@ router.get('/transactions', authenticateToken, async (req, res) => {
                     }
                 },
                 {
+                    $sort:{date_time:-1}
+                },
+                {
                     $facet:{
                         count:[{$count:'totalcount'}],
                         data:[{$skip:(pages*(page_no-1))},{$limit:pages}],
@@ -357,7 +360,12 @@ router.get('/transactions', authenticateToken, async (req, res) => {
                 }
                 
             ]).toArray()
-            const total_page =  Math.ceil(result[0].count[0].totalcount/pages)
+            let total_page
+            if (result[0].count[0]?.totalcount)
+                total_page =  Math.ceil(result[0].count[0]?.totalcount/pages)
+            else
+                total_page = 0
+
             if(result){
                 res.status(200).json({
                     "status": "success",
