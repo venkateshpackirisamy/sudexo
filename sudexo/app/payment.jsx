@@ -1,19 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import colors from '../assets/color';
 const uri = process.env.EXPO_PUBLIC_API_URL;
+const { height, width } = Dimensions.get('window');
 const BankBalancePage = () => {
     const item = useLocalSearchParams();
     const [loading, setLoading] = useState(true)
+    const [response,setResponse] = useState(null)
     useEffect(() => {
         // fetchBalance()
         if (item.to_id) {
             makePayment()
         }
-        else if (item.result)
-            setLoading(false)
-
     }, [])
 
     const makePayment = async () => {
@@ -28,8 +30,9 @@ const BankBalancePage = () => {
                 body: JSON.stringify({ pin: item.pin, amount: item.amount, to_id: item.to_id })
             })
             const result1 = await response1.json()
-
-            router.replace({ pathname: '/payment', params: { result: result1.message } })
+            console.log(result1)
+            setResponse(result1)
+            router.setParams({})
 
         }
         catch (error) {
@@ -37,12 +40,12 @@ const BankBalancePage = () => {
         }
     }
 
-    if (loading) {
+    if (response==null) {
 
         return (
             <SafeAreaView style={styles.loadingContainor}>
-                <ActivityIndicator size="large" color="#00ff00" />
-                    <Text>Loading...</Text>
+                <ActivityIndicator size="large" color={colors.color1} />
+                <Text>Loading...</Text>
             </SafeAreaView>
         )
 
@@ -55,8 +58,22 @@ const BankBalancePage = () => {
             {/* {err!=null && <Text style={styles.error}>{err}</Text>} */}
             {/*             
             <Text>{item.amount },{ item.to_id},{ item.pin}</Text> */}
-            <View style={{padding:20,justifyContent:'center',alignItems:'center'}}>
-            <Text style={{fontWeight:'bold',fontSize:25}}>{item.result}</Text>
+            <View style={{ padding: 20 }}>
+
+                <View style={{ height: height * 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text>{response.status_code == 401 && <AntDesign name="closecircle" size={150} color="red" />}</Text>
+                    <Text>{response.status_code == 200 && <AntDesign name="checkcircle" size={150} color="green" />}</Text>
+                    <Text>{response.status_code == 400 && <FontAwesome name="warning" size={150} color="orange" />}</Text>
+                </View>
+
+                <Text style={{ fontWeight: 'bold', fontSize: 25, alignSelf: 'center', color: item.status_code == 200 ? 'green' : 'red' }}>
+                    {response.status_code == 200 ? 'Payment Success' : 'Payment Failed'}</Text>
+
+                {response.amount && <Text style={{ fontWeight: 'bold', fontSize: 25, alignSelf: 'center' }}>{response.amount}</Text>}
+
+                {!(response.status_code == 200) && <Text style={{ fontWeight: 'bold', fontSize: 20, alignSelf: 'center' }}>{response.message}</Text>}
+
+                {response.status_code == 200 && <Text style={{ fontWeight: 'bold', fontSize: 20, alignSelf: 'center' }}>{response.description}</Text>}
             </View>
             <TouchableOpacity style={styles.button} onPress={() => { router.replace('/EmpHome') }}>
                 <Text style={styles.buttonText}>Back to Home</Text>
@@ -69,9 +86,10 @@ const BankBalancePage = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+        // justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+        backgroundColor: 'white'
     },
     title: {
         fontSize: 24,
@@ -97,6 +115,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         alignItems: 'center',
         borderRadius: 5,
+        borderRadius: 25,
+        margin: 25,
     },
     buttonText: {
         fontSize: 18,

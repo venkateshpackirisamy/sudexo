@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from "react";
+import ToastManager, { Toast } from "toastify-react-native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function Index() {
@@ -41,12 +42,13 @@ export default function Index() {
                                 });
                             }
                             else if (data.status_code==201) {
+                                Toast.success('Account Created')
                                 setName('');setPassword('');setEmail('');setrePassword('')
                                 router.push('/login')
                             }
                         })
                 })
-                .catch((res)=> { console.log('errror',res) })
+                .catch((res)=> { console.log('errror',res);Toast.error(res.message)  })
 
 
 
@@ -66,6 +68,7 @@ export default function Index() {
 
             <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignContent: 'center' }}>
                 <StatusBar style="dark" />
+                <ToastManager/>
                 <View style={styles.container}>
                     <Text style={styles.title}>Register</Text>
                     <View style={styles.form}>

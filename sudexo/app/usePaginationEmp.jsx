@@ -8,7 +8,7 @@ const initialData = {
   pageNo: 1,
   totalPages: 1,
 };
-const usePaginationEmp = () => {
+const usePaginationEmp = (filter,nameReg) => {
   const [initialLoader, setInitialLoader] = useState(true);
   const [data, setData] = useState(initialData.data);
   const [totalResult, setTotalResult] = useState(initialData.totalResult);
@@ -21,13 +21,15 @@ const usePaginationEmp = () => {
   const fetchData = async (page) => {
     const token = await AsyncStorage.getItem('@userToken');
     try {
-      const response1 = await fetch(`${uri}/admin/employees?page_no=${page}`, {
+      const filterParams = `&level=${filter}`
+      const nameParams = `&name=${nameReg}`
+
+      const response1 = await fetch(`${uri}/admin/employees?page_no=${page}${(filter!=null && filter!=0)?filterParams:''}${(nameReg!=null)?nameParams:''}`, {
         headers: {
             'Content-type': 'application/json',
             'Authorization': `Bearer ${token}`,
         }})
-
-
+        
       const result1 = await response1.json()
       const resultOld = result1.result
   
@@ -72,7 +74,9 @@ const usePaginationEmp = () => {
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData(1); // Refresh from the first page
-  }, []);
+  }, [filter,nameReg]);
+
+
 
   // Load more data
   const loadMore = () => {
@@ -81,6 +85,7 @@ const usePaginationEmp = () => {
       fetchData(pageNo + 1);
     }
   };
+  
 
   return {
     data,

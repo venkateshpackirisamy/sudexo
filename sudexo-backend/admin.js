@@ -9,12 +9,11 @@ const { hashPassword, verifyPassword } = require('./encrypt_decrypt')
 const { generateAccessToken, authenticateToken } = require('./tokens');
 const e = require('cors');
 const { error } = require('console');
+const { match } = require('assert');
 const router = express.Router();
 router.use(express.json())
 const uri = process.env.uri
 const dbName = process.env.db
-const client = new MongoClient(uri)
-
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -31,6 +30,7 @@ router.get('/', (req, res) => {
 })
 
 router.post('/register', async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         const { name, email, password } = req.body
         const errors = []
@@ -131,6 +131,7 @@ router.post('/register', async (req, res) => {
 })
 
 router.post('/login', async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         const errors = []
         const { email, password } = req.body
@@ -216,6 +217,7 @@ router.post('/login', async (req, res) => {
 })
 
 router.post('/createEmployee', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.user.id) {
             const { name, email, password, pin, amount } = req.body
@@ -232,13 +234,24 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
                             email: email,
                             password: hashedPassword,
                             pin: pin,
-                            balance: Number(amount) ? Number(amount) : 0
+                            balance: Number(amount) ? Number(amount) : 0,
+                            active: true
                         }
 
                         await client.connect()
                         const Db = client.db(dbName)
                         const collection = Db.collection('EmployeeUsers')
-                        if (!await collection.findOne({ email: email })) {
+                        const esiEmp = await collection.find({ email: email }).toArray()
+                        let active = false
+                        let dupicate = false
+                        esiEmp.forEach((item) => {
+                            if (item.active)
+                                active = true
+                            if (item.admin_id == req.user.id)
+                                dupicate = true
+                        })
+                        console.log(active, esiEmp)
+                        if (!dupicate && !active) {
                             const result = await collection.insertOne(newEmp)
                             if (result.acknowledged === true) {
                                 res.status(201).json({
@@ -260,7 +273,7 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
                             }
                             return
                         }
-                        else {
+                        else if (dupicate) {
                             res.status(409).json({
                                 "status": "error",
                                 "message": "Email already in use",
@@ -269,6 +282,21 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
                                     {
                                         "field": "email",
                                         "error": "This email is already registered. Please use a different one."
+                                    }
+                                ],
+                                "status_code": 409
+                            })
+                            return
+                        }
+                        else if (active) {
+                            res.status(409).json({
+                                "status": "error",
+                                "message": "Email already in use",
+                                "description": "The request could not be completed due to a conflict with the current state of the resource",
+                                "errors": [
+                                    {
+                                        "field": "email",
+                                        "error": "This email is active in another admin . Please use a different one."
                                     }
                                 ],
                                 "status_code": 409
@@ -345,6 +373,7 @@ router.post('/createEmployee', authenticateToken, async (req, res) => {
 })
 
 router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.file) {
             function getData() {
@@ -384,7 +413,7 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
                 await client.connect()
                 const Db = client.db(dbName)
                 const collection = Db.collection('EmployeeUsers')
-                const emails = (await collection.find().project({ email: 1, _id: 0 }).toArray()).map(item => { return item.email })
+                const emails = await collection.find().project({ email: 1, active: 1, admin_id: 1, _id: 0 }).toArray()
                 if (!fileError && datas.length >= 1) {
                     const result = []
                     const validEmp = []
@@ -426,7 +455,7 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
 
                 }
                 else {
-                    res.status(400).send({
+                    res.status(400).json({
                         "status": "error",
                         "message": "Invalid file",
                         "description": "Invalid syntax for this request was provided",
@@ -456,7 +485,7 @@ router.post('/CreateBulkEmployee', [upload.single('file'), authenticateToken], a
             }
         }
         else {
-            res.status(400).send({
+            res.status(400).json({
                 "status": "error",
                 "message": "Invalid fie",
                 "description": "Invalid syntax for this request was provided",
@@ -495,11 +524,21 @@ async function createEmployee(data, emails, admin_id) {
                         email: email,
                         password: hashedPassword,
                         pin: pin,
-                        balance: Number(amount) ? Number(amount) : 0
+                        balance: Number(amount) ? Number(amount) : 0,
+                        active: true
                     }
+                    const esiEmp = emails.filter((item) => { return item.email == email })
+                    let active = false
+                    let dupicate = false
+                    esiEmp.forEach((item) => {
+                        if (item.active)
+                            active = true
+                        if (admin_id == item.admin_id)
+                            dupicate = true
+                    })
 
-                    if (!emails.includes(email)) {
-                        emails.push(email)
+                    if (!active && !dupicate) {
+                        emails.push({ email: email, active: true })
                         return ({
                             "result": {
                                 "status": "success",
@@ -508,7 +547,7 @@ async function createEmployee(data, emails, admin_id) {
                             }, "newEmp": newEmp
                         })
                     }
-                    else {
+                    else if (dupicate) {
                         return ({
                             "result": {
                                 "status": "error",
@@ -525,7 +564,23 @@ async function createEmployee(data, emails, admin_id) {
                         })
 
                     }
+                    else if (active) {
+                        return ({
+                            "result": {
+                                "status": "error",
+                                "message": "Email already in use",
+                                "description": "The request could not be completed due to a conflict with the current state of the resource",
+                                "errors": [
+                                    {
+                                        "field": "email",
+                                        "error": "This email is already active in another admin. Please use a different one."
+                                    }
+                                ],
+                                "status_code": 409
+                            }, newEmp: null
+                        })
 
+                    }
                 } else {
                     errors.push({
                         "field": "pin",
@@ -583,6 +638,7 @@ async function createEmployee(data, emails, admin_id) {
 }
 
 router.post('/addAmount', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
 
         if (req.user) {
@@ -726,6 +782,7 @@ router.post('/addAmount', authenticateToken, async (req, res) => {
 })
 
 router.get('/employee', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.user) {
             const employee_id = req.query.employee_id
@@ -734,8 +791,7 @@ router.get('/employee', authenticateToken, async (req, res) => {
                 const Db = client.db(dbName)
                 const collection = Db.collection('EmployeeUsers')
                 const employees = await collection.find({ id: employee_id }).project({ _id: 0, password: 0, pin: 0 }).toArray()
-                client.close()
-                
+                await client.close()
                 const employee = employees[0]
                 if (employee) {
                     if (employee.admin_id === req.user.id) {
@@ -806,8 +862,8 @@ router.get('/employee', authenticateToken, async (req, res) => {
 
 
     } catch (error) {
+        console.log('admin employee')
         console.log(error)
-        res.send('error')
     }
     finally {
         // client.close()
@@ -816,6 +872,7 @@ router.get('/employee', authenticateToken, async (req, res) => {
 })
 
 router.get('/employeeByMail', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.user) {
             const email_id = req.query.email
@@ -904,21 +961,34 @@ router.get('/employeeByMail', authenticateToken, async (req, res) => {
 
 })
 
-
 router.get('/transactions', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.user) {
             const employee_id = req.query.employee_id
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
+            const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) : 0
+            const month_filter = {}
+            if(month!=0){
+                month_filter.month=month
+            }
             const pages = 5
             if (employee_id) {
                 client.connect()
                 const Db = client.db(dbName)
                 const collection = Db.collection('Transaction')
                 const result = await collection.aggregate([
+                    { 
+                        $addFields: {
+                            month: {"$month": "$date_time" } 
+                        }
+                    },
                     {
                         $match: {
-                            $or: [{ from_id: employee_id }, { to_id: employee_id }]
+                            $and:[
+                            {$or: [{ from_id: employee_id }, { to_id: employee_id }]},
+                            month_filter
+                            ]
                         }
                     },
                     {
@@ -986,25 +1056,45 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 
 
     } catch (error) {
+        console.log('admin transaction')
         console.log(error)
     }
     finally {
-        client.close()
+        await client.close()
     }
 })
 
 router.get('/employees', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
         if (req.user) {
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
-            const pages = 5
+            const level = (parseInt(req.query.level) && req.query.level > 0) ? parseInt(req.query.level) : 0
+            const nameReg = req.query.name
+            const nameFilter = {}
+            if(nameReg){
+                nameFilter.$or=[]
+                nameFilter.$or.push({name:RegExp(nameReg.toUpperCase())})
+                nameFilter.$or.push({name:RegExp(nameReg.toUpperCase())})
+                nameFilter.$or.push({name:RegExp(nameReg.toLowerCase())})
+                nameFilter.$or.push({name:RegExp(nameReg[0].toUpperCase() + nameReg.slice(1).toLowerCase())})
+            }
+            let filter = {}
+            if (level == 1)
+                filter = { balance: { $gte: 2000 } }
+            else if (level == 2)
+                filter = { $and: [{ balance: { $lt: 2000 } }, { balance: { $gte: 1000 } }] }
+            else if (level == 3)
+                filter = { balance: { $lt: 1000 } }
+
+            const pages = 7
             await client.connect()
             const Db = client.db(dbName)
             const collection = Db.collection('EmployeeUsers')
             const result = await collection.aggregate([
                 {
                     $match: {
-                        admin_id: req.user.id
+                        $and: [{ admin_id: req.user.id }, filter,nameFilter]
                     }
                 },
                 {
@@ -1020,7 +1110,249 @@ router.get('/employees', authenticateToken, async (req, res) => {
             ]).toArray()
             let total_page
             if (result[0].count[0]?.totalcount)
-                total_page =  Math.ceil(result[0].count[0].totalcount/pages)
+                total_page = Math.ceil(result[0].count[0].totalcount / pages)
+            else
+                total_page = 0
+
+            if (result) {
+                res.status(200).json({
+                    "status": "success",
+                    "message": "Employees fetched",
+                    "description": "Employees fetched successful.",
+
+                    "result": {
+                        "total_page": total_page,
+                        "current_page": page_no,
+                        "data": result[0].data
+                    },
+                    "status_code": 200
+                })
+                return
+            }
+
+
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+    }
+    finally {
+        await client.close()
+    }
+
+})
+
+router.get('/dashBoard', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+        if (req.user) {
+            await client.connect()
+            const Db = client.db(dbName)
+            const collection = Db.collection('EmployeeUsers')
+            const result = await collection.aggregate([
+                {
+                    $match: {
+                        admin_id: req.user.id
+                    }
+                },
+                {
+                    $facet: {
+                        total: [{ $count: 'total' }],
+                        LessT1000: [
+                            { $match: { balance: { $lt: 1000 } } },
+                            { $count: "LessT1000" }
+                        ],
+                        LessT2000: [
+                            { $match: { $and: [{ balance: { $lt: 2000 } }, { balance: { $gte: 1000 } }] } },
+                            { $count: "LessT2000" }
+                        ],
+                        GreatT2000: [
+                            { $match: { balance: { $gte: 2000 } } },
+                            { $count: "GreatT2000" }
+                        ],
+
+                    }
+                }
+
+            ]).toArray()
+
+            if (result) {
+                res.status(200).json({
+                    "status": "success",
+                    "message": "Employees fetched",
+                    "description": "Employees fetched successful.",
+
+                    "result": result,
+                    "status_code": 200
+                })
+                return
+            }
+
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        client.close()
+    }
+
+})
+
+router.get('/monthlyspending', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+        if (req.user) {
+            await client.connect()
+            const Db = client.db(dbName)
+            const collection = Db.collection('Transaction')
+            const sixMonthsAgo = new Date()
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+            const result = await collection.aggregate([
+                {
+                    $match: {
+                        admin_id: req.user.id,
+                        date_time: { $gte: sixMonthsAgo }
+                    }
+                },
+                {
+                    $project: {
+                        month: { $month: "$date_time" },
+                        amount: 1
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$month",
+                        totalAmount: { $sum: "$amount" }
+                    }
+                },
+                {
+                    $sort: { _id: 1 }
+                }
+            ]).toArray()
+            if (result) {
+                res.status(200).json({
+                    "status": "success",
+                    "message": "spending fetched",
+                    "description": "spending data fetched successful.",
+                    "result": result,
+                    "status_code": 200
+                })
+                return
+            }
+        } else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        await client.close()
+    }
+
+})
+
+router.get('/employeeSpending', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+        if (req.user) {
+
+            const today = new Date()
+            const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
+            const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) :( today.getMonth()+1)
+            const pages = 7
+            await client.connect()
+            const Db = client.db(dbName)
+            const collection = Db.collection('EmployeeUsers')
+            const result = await collection.aggregate([
+                {
+                    $match: {
+                        admin_id: req.user.id
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "Transaction",
+                        localField: "id",
+                        foreignField: "from_id",
+                        pipeline: [{
+                            $match: {
+                                $expr: {
+                                    $eq: [{ $month: "$date_time" }, month
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: "$from_id",
+                                totalspending: { $sum: "$amount" }
+                            }
+                        },
+
+                        ],
+
+                        as: "transaction"
+                    }
+                },
+                {
+                    $project: { _id: 0, pin: 0, password: 0, }
+                },
+                {
+                    $sort: { "transaction.totalspending": -1 }
+                },
+                {
+                    $facet: {
+                        count: [{ $count: 'totalcount' }],
+                        data: [{ $skip: (pages * (page_no - 1)) }, { $limit: pages }],
+                    }
+                }
+
+            ]).toArray()
+            let total_page
+            if (result[0].count[0]?.totalcount)
+                total_page = Math.ceil(result[0].count[0].totalcount / pages)
             else
                 total_page = 0
 
@@ -1064,56 +1396,88 @@ router.get('/employees', authenticateToken, async (req, res) => {
         res.send('error')
     }
     finally {
-        client.close()
+        await client.close()
     }
 
 })
 
-router.get('/dashBoard', authenticateToken, async (req, res) => {
+router.post('/deactivateEmployee', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
     try {
+
         if (req.user) {
-            await client.connect()
-            const Db = client.db(dbName)
-            const collection = Db.collection('EmployeeUsers')
-            const result = await collection.aggregate([
-                {
-                    $match: {
-                        admin_id: req.user.id
-                    }
-                },
-                {
-                    $facet: {
-                        total: [{ $count: 'total' }],
-                        LessT1000: [
-                            {$match: {balance: { $lt: 1000 }}},
-                            {$count:"LessT1000"} 
-                        ],
-                        LessT2000: [
-                            {$match: {$and:[{balance: { $lt: 2000 }},{balance: { $gt: 1000 }}]}},
-                            {$count:"LessT2000"} 
-                        ],
-                        GreatT2000: [
-                            {$match:{balance: { $gte: 2000 }}},
-                            {$count:"GreatT2000"} 
-                        ],
-                       
+            const { employee_id } = req.body
+            if (employee_id) {
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                // const employee = await collection.findOne({id: employee_id })
+                const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                    $set: {
+                        active: {
+                            $cond: {
+                                if: { $eq: ["$admin_id", req.user.id] },
+                                then: false,
+                                else: "$active"
+                            }
+                        }
                     }
                 }
-
-            ]).toArray()
-
-            if (result) {
-                res.status(200).json({
-                    "status": "success",
-                    "message": "Employees fetched",
-                    "description": "Employees fetched successful.",
-
-                    "result": result,
-                    "status_code": 200
-                })
-                return
+                ]
+                )
+                if (employee) {
+                    if (req.user.id === employee.admin_id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "Status Changed ",
+                            "description": "Status Changed successful.",
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
             }
+            else {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": [{
+                            "field": "employee_id",
+                            "error": "This field is required"
+                        }],
+                        "status_code": 400
+                    }
+                )
+                return
 
+            }
         }
         else {
             res.status(401).json(
@@ -1128,19 +1492,113 @@ router.get('/dashBoard', authenticateToken, async (req, res) => {
             return
         }
 
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        await client.close()
+    }
+})
+
+router.post('/activateEmployee', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+
+        if (req.user) {
+            const { employee_id } = req.body
+            if (employee_id) {
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                    $set: {
+                        active: {
+                            $cond: {
+                                if: { $eq: ["$admin_id", req.user.id] },
+                                then: true,
+                                else: "$active"
+                            }
+                        }
+                    }
+                }
+                ]
+                )
+                if (employee) {
+                    if (req.user.id === employee.admin_id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "Status Changed ",
+                            "description": "Status Changed successful.",
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
+            }
+            else {
+                res.status(400).json(
+                    {
+                        "status": "error",
+                        "message": "Invalid input",
+                        "description": "Invalid syntax for this request was provided",
+                        "errors": [{
+                            "field": "employee_id",
+                            "error": "This field is required"
+                        }],
+                        "status_code": 400
+                    }
+                )
+                return
+
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
 
     } catch (error) {
         console.log(error)
         res.send('error')
     }
     finally {
-        client.close()
+        await client.close()
     }
-
 })
-
-
-
 
 
 

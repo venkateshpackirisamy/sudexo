@@ -8,9 +8,7 @@ const initialData = {
   pageNo: 1,
   totalPages: 1,
 };
-
-const usePagination = (emp_id,month) => {
-
+const usePaginationEmp = (month) => {
   const [initialLoader, setInitialLoader] = useState(true);
   const [data, setData] = useState(initialData.data);
   const [totalResult, setTotalResult] = useState(initialData.totalResult);
@@ -18,18 +16,17 @@ const usePagination = (emp_id,month) => {
   const [totalPages, setTotalPages] = useState(initialData.totalPages);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
+  // Fetch data for a given page
   const fetchData = async (page) => {
     const token = await AsyncStorage.getItem('@userToken');
     try {
       const filterParams = `&month=${month}`
-      const response1 = await fetch(`${uri}/admin/transactions?employee_id=${emp_id}&page_no=${page}${(month!=null && month!=0)?filterParams:''}`, {
+      const response1 = await fetch(`${uri}/admin/employeeSpending?page_no=${page}${(month!=null && month!=0)?filterParams:''}`, {
         headers: {
             'Content-type': 'application/json',
             'Authorization': `Bearer ${token}`,
         }})
-
-
       const result1 = await response1.json()
       const resultOld = result1.result
   
@@ -66,6 +63,7 @@ const usePagination = (emp_id,month) => {
   };
 
   useEffect(() => {
+    console.log()
     fetchData(pageNo);
   }, []);
 
@@ -75,6 +73,8 @@ const usePagination = (emp_id,month) => {
     fetchData(1); // Refresh from the first page
   }, [month]);
 
+
+
   // Load more data
   const loadMore = () => {
     if (!loadingMore && pageNo < totalPages) {
@@ -82,6 +82,7 @@ const usePagination = (emp_id,month) => {
       fetchData(pageNo + 1);
     }
   };
+  
 
   return {
     data,
@@ -94,4 +95,4 @@ const usePagination = (emp_id,month) => {
   };
 };
 
-export default usePagination;
+export default usePaginationEmp;

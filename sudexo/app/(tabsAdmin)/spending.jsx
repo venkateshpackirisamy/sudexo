@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import ToastManager, { Toast } from "toastify-react-native";
-import usePaginationEmp from "../usePaginationEmp";
+import usePaginationEmp from "../usePaginationSpnd";
 import colors from "../../assets/color";
 import { useIsFocused } from "@react-navigation/native";
 const uri = process.env.EXPO_PUBLIC_API_URL;
@@ -17,19 +17,34 @@ export default function Index() {
   const item = useLocalSearchParams()
   const [userName, setUserName] = useState()
   const [token, setToken] = useState()
-  const [nameReg, setNameReg] = useState('')
-  const [modalVisible, setModalVisible] = useState(false)
-  const [filter, setfilter] = useState(item.filter || 0)
-  const [filterVar, setfilterVar] = useState(filter)
+  const [month, setMonth] = useState(item.month || 0)
+  const [lastSixMon, setLastSixMon] = useState([])
+  const [filterVar, setfilterVar] = useState(month)
+  const [barSat, setBarSat] = useState([])
   const isfocuse = useIsFocused()
-
+  const [modalVisible, setModalVisible] = useState(false)
+  const barData = [
+    { label: 'Jan', mon: 1, },
+    { label: 'Feb', mon: 2, },
+    { label: 'Mar', mon: 3, },
+    { label: 'Apr', mon: 4, },
+    { label: 'May', mon: 5, },
+    { label: 'June', mon: 6, },
+    { label: 'July', mon: 7, },
+    { label: 'Aug', mon: 8, },
+    { label: 'Sep', mon: 9, },
+    { label: 'Oct', mon: 10, },
+    { label: 'Nov', mon: 11, },
+    { label: 'Dec', mon: 12, },
+  ]
   useEffect(() => {
     setUser()
+    getMonths()
   }, [])
   useEffect(() => {
     if (isfocuse) {
-      setfilter(item.filter)
-      router.setParams({ filter: 0 })
+      setMonth(item.month)
+      router.setParams({ month: 0 })
     }
   }, [isfocuse])
 
@@ -45,15 +60,26 @@ export default function Index() {
   }
 
   useEffect(() => {
-    setfilterVar(filter)
-    if (filter != null)
+    setfilterVar(month)
+    if (month != null)
       handleRefresh();
-  }, [filter]);
+  }, [month]);
 
-  useEffect(() => {
-    if (nameReg != null)
-      handleRefresh();
-  }, [nameReg]);
+  const getMonths = () => {
+    const d = new Date();
+    const current_month = d.getMonth() + 1
+    let temp
+    if (current_month < 6) {
+      temp = [
+        ...barData.slice(12 - (6 - current_month)),
+        ...barData.slice(0, current_month)
+      ]
+    } else {
+      temp = barData.slice(current_month - 6, current_month)
+    }
+    setBarSat(temp)
+  }
+
 
   const {
     data,
@@ -63,37 +89,10 @@ export default function Index() {
     handleRefresh,
     loadMore,
     initialLoader,
-  } = usePaginationEmp(filter, nameReg);
+  } = usePaginationEmp(month);
 
 
-  const search = () => {
-    if (email_id) {
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email_id)) {
-        fetch(`${uri}/admin/employeeByMail?email=${email_id}`, {
-          headers: {
-            'Content-type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          }
-        })
-          .then(res => {
-            res.json()
-              .then(data => {
-                if (data.status_code == 200) {
-                  router.push({ pathname: '/employee', params: { emp_id: data.data.id } })
-                  setEmailId('')
-                }
-                else
-                  Toast.error(data.errors[0].error);
-              })
-          })
-      }
-      else
-        Toast.error("Enter valid Email id");
-    }
-    else {
-      Toast.error("Please Enter Email id");
-    }
-  }
+
   const renderFooter = () => {
     if (!loadingMore || data.length < 5) return null; // Show footer loader only for subsequent pages
     return <ActivityIndicator animating size="large" />;
@@ -114,16 +113,6 @@ export default function Index() {
 
 
       <View style={{ 'width': '100%', height: '90%', alignItems: 'center', gap: 10, paddingTop: 15, }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TextInput
-            style={styles.input}
-            value={nameReg}
-            onChangeText={(value) => { setNameReg(value) }}
-            placeholder="Search"
-            placeholderTextColor='black'
-          />
-        </View>
-
 
         <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.filter}>
           <Text style={{ fontSize: 15, fontWeight: "500" }}>Filters </Text>
@@ -134,37 +123,37 @@ export default function Index() {
           transparent={true}
           visible={modalVisible}
           onRequestClose={() => {
-            setfilterVar(filter)
+            setfilterVar(month)
             setModalVisible(!modalVisible);
           }}>
           <View style={styles.centeredView}>
             <View style={styles.modalView}>
               <View style={styles.modelHaeder}>
 
-                <Pressable onPress={() => { setModalVisible(false), setfilterVar(filter) }}><AntDesign name="close" size={24} color="black" /></Pressable>
+                <Pressable onPress={() => { setModalVisible(false), setfilterVar(month) }}><AntDesign name="close" size={24} color="black" /></Pressable>
                 <Text style={{ fontWeight: 'bold', fontSize: 18 }}>Filters</Text>
                 <Pressable onPress={() => setfilterVar(0)}><Text style={[filterVar != 0 && { fontWeight: 'bold' }]}>clear </Text></Pressable>
               </View>
               <View style={{ gap: 10, width: '100%', alignItems: 'center' }}>
-                <TouchableOpacity onPress={() => setfilterVar(1)} style={[styles.filter1, filterVar == 1 && { borderWidth: 1, borderColor: 'black' }]}>
-                  <Text>Above 2000</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setfilterVar(2)} style={[styles.filter1, filterVar == 2 && { borderWidth: 1, borderColor: 'black' }]}>
-                  <Text>Above 1000</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setfilterVar(3)} style={[styles.filter1, filterVar == 3 && { borderWidth: 1, borderColor: 'black' }]}>
-                  <Text>below 1000</Text>
-                </TouchableOpacity>
+                {barSat.map((item) => {
+                  return (
+                    <TouchableOpacity onPress={() => setfilterVar(item.mon)} style={[styles.filter1, filterVar == item.mon && { borderWidth: 1, borderColor: 'black' }]}>
+                      <Text>{item.label}</Text>
+                    </TouchableOpacity>)
+                })}
+
+
               </View>
 
 
-              <TouchableOpacity onPress={() => { setfilter(filterVar); setModalVisible(false) }} style={{ width: '100%', padding: 10, alignItems: 'center', backgroundColor: colors.color1 }} >
+              <TouchableOpacity onPress={() => { setMonth(filterVar); setModalVisible(false) }} style={{ width: '100%', padding: 10, alignItems: 'center', backgroundColor: colors.color1 }} >
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>Apply</Text>
               </TouchableOpacity>
 
             </View>
           </View>
         </Modal>
+
         {!refreshing ?
           <FlatList
             data={data}
@@ -178,7 +167,7 @@ export default function Index() {
                   <View style={styles.CardRight}>
                     <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', }}>
                       <Text style={{ fontWeight: 'bold', fontSize: 20, }}>{item.name}</Text>
-                      <Text style={{ fontWeight: 'bold', fontSize: 20, color: item.balance >= 2000 ? 'green' : item.balance >= 1000 ? "gold" : 'red' }}>₹{item.balance}</Text>
+                      <Text style={{ fontWeight: 'bold', fontSize: 20, }}>₹{item.transaction[0]?.totalspending || 0}</Text>
                     </View>
                     <Text>{item.email}</Text>
                   </View>
@@ -188,7 +177,7 @@ export default function Index() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
-            ListEmptyComponent={<View style={{ height: height * 0.8, width: width * 0.95, justifyContent: 'center', alignItems: 'center' }}> <Text style={{ fontWeight: 'bold', fontSize: 25 }}> No Employees Yet</Text></View>}
+            ListEmptyComponent={<View style={{ height: height * 0.8, width: width * 0.9, justifyContent: 'center', alignItems: 'center' }}> <Text style={{ fontWeight: 'bold', fontSize: 25 }}> No Employees Yet</Text></View>}
             ListFooterComponent={renderFooter}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
@@ -200,6 +189,8 @@ export default function Index() {
             <Text>Loading...</Text>
           </View>
         }
+
+
       </View>
 
     </SafeAreaView>
@@ -260,14 +251,12 @@ const styles = StyleSheet.create({
 
   },
   input: {
-    width: width * 0.9,
+    width: width * 0.8,
     height: height * 0.05,
     borderColor: '#ccc',
     borderWidth: 1,
     fontSize: 15,
     textAlign: 'center',
-    borderRadius: 8,
-    backgroundColor: 'white'
     // marginBottom: 10,
   },
   filter: {
@@ -288,7 +277,7 @@ const styles = StyleSheet.create({
   },
   modalView: {
     margin: 20,
-    height: "40%",
+    height: "55%",
     width: "80%",
     backgroundColor: 'white',
     borderRadius: 20,

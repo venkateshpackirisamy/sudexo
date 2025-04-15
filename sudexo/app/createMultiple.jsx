@@ -3,6 +3,7 @@ import { View, Text, Button, Alert, StyleSheet, TouchableOpacity, Modal, ScrollV
 import * as DocumentPicker from 'expo-document-picker';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ToastManager, { Toast } from "toastify-react-native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
   const [file, setFile] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [data, setData] = useState([])
+  const [err ,setErr] = useState(null)
   useEffect(() => {
     (async () => {
       const result = await AsyncStorage.getItem('@userToken')
@@ -67,11 +69,15 @@ export default function App() {
       })
         .then(resp => resp.json())
         .then(json => {
-          setData(json);
+          if (json.email)
+            setData(json);
+          else
+            setErr(json)
+          console.log(json)
           setModalVisible(true)
 
         })
-        .catch(err => { console.log(err) })
+        .catch(err => { console.log(err); Toast.error(err.message) })
     }
     else {
       console.log('select a file')
@@ -83,7 +89,7 @@ export default function App() {
   return (
 
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 }}>
-
+      <ToastManager/>
       <Modal
         animationType="slide"
         transparent={true}
@@ -95,11 +101,12 @@ export default function App() {
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <View style={{ width: '100%', alignItems: "flex-end", }}>
-              <TouchableOpacity onPress={()=>{setModalVisible(!modalVisible);}}>
+              <TouchableOpacity onPress={() => { setModalVisible(!modalVisible); }}>
                 <AntDesign name="closecircle" size={30} color="black" />
               </TouchableOpacity>
 
             </View>
+            {data.length>=1 &&
             <ScrollView >
               {data.map((item) => {
                 return (
@@ -115,7 +122,14 @@ export default function App() {
               })
 
               }
-            </ScrollView>
+            </ScrollView> }
+
+            {err &&
+            <View style={{padding:10,borderRadius:10,borderWidth:1,borderColor:'red'}}>
+                <Text style={{fontWeight:'bold',alignSelf:'center',margin:10}}>{err.message}</Text>
+                <Text>{err.errors[0].error.slice(0,100)}</Text>
+            </View>
+            }
           </View>
         </View>
 

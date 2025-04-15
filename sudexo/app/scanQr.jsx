@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Text, View, StyleSheet, Button } from "react-native";
+import { Text, View, StyleSheet, Button, Dimensions } from "react-native";
 import { CameraView, Camera } from "expo-camera";
 import { router } from "expo-router";
-
+import colors from "../assets/color";
+const { height, width } = Dimensions.get('window');
 export default function App() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+
   useEffect(() => {
     const getCameraPermissions = async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -48,7 +50,9 @@ export default function App() {
             barcodeTypes: ["qr"],
           }}
           style={StyleSheet.absoluteFillObject}
-        />)}
+        >
+          <View style={styles.qr}><View style={styles.box}></View></View>
+        </CameraView>)}
       {scanned && (
         <Button title={"Tap to Scan Again"} onPress={() => setScanned(false)} />
       )}
@@ -62,4 +66,15 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     justifyContent: "center",
   },
+  qr:{
+    flex:1,
+    alignItems:'center',
+    justifyContent:'center',
+  },
+  box:{
+    borderWidth:3,
+    height:height*0.3,
+    width:width*0.6,
+    borderColor:colors.color1,
+  }
 });

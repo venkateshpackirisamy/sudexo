@@ -19,66 +19,130 @@ export default function Pay() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style='light' backgroundColor={colors.color1} />
+            <StatusBar style="light" backgroundColor={colors.color1} />
             <ToastManager />
-            <View style={styles.haeder}>
-                <Text style={{ fontSize: 20 }}>To:{item.to_id}</Text>
+            <View style={styles.header}>
+                <Text style={styles.headerText}>Paying To</Text>
+                <Text style={styles.receiverText}>{item.to_id}</Text>
             </View>
-            <View style={{ flex: 1, padding: 10, alignItems: 'center' }}>
+
+            <View style={styles.card}>
                 <Text style={styles.label}>Enter Amount</Text>
                 <TextInput
                     style={styles.input}
                     value={Amount}
-                    onChangeText={num => { setAmount(num) }}
+                    onChangeText={setAmount}
                     keyboardType="numeric"
-                    onSubmitEditing={() => { Submit() }}
+                    onSubmitEditing={Submit}
+                    placeholder="₹0.00"
+                    placeholderTextColor="#aaa"
                 />
             </View>
-            <View style={{padding:20}}>
             <TouchableOpacity style={styles.button} onPress={Submit}>
-                <Text style={styles.buttonText}>Next</Text>
+                <Text style={styles.buttonText}>Proceed to Pay</Text>
             </TouchableOpacity>
-            </View>
-
-        </View>)
+        </View>
+    );
 }
+// const styles = StyleSheet.create({
+//     container: {
+//         flex: 1,
+//     },
+//     haeder: {
+//         height: height * 0.1,
+//         width: '100%',
+//         padding: 20,
+//         backgroundColor: 'white',
+//         alignItems: 'center',
+//         justifyContent: 'center',
+//         gap: 10
+//     },
+//     input: {
+//         width: width * 0.8,
+//         height: height * 0.10,
+//         borderColor: '#ccc',
+//         borderWidth: 1,
+//         borderRadius: 5,
+//         fontSize: 30,
+//         textAlign: 'center',
+//         marginBottom: 20,
+//     },
+//     label: {
+//         fontSize: 18,
+//         marginBottom: 20,
+//     },
+//      button: {
+//         width: '100%',
+//         padding: 15,
+//         backgroundColor: '#4CAF50',
+//         alignItems: 'center',
+//         borderRadius: 5,
+//     },
+//     buttonText: {
+//         fontSize: 18,
+//         color: '#fff',
+//         fontWeight: 'bold',
+//     }
+// })
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    haeder: {
-        height: height * 0.1,
-        width: '100%',
+        backgroundColor: '#F6F8FA',
         padding: 20,
-        backgroundColor: 'white',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10
+        backgroundColor:'white'
     },
-    input: {
-        width: width * 0.8,
-        height: height * 0.10,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 5,
-        fontSize: 30,
-        textAlign: 'center',
-        marginBottom: 20,
+    header: {
+        paddingTop: 40,
+        paddingBottom: 20,
+        alignItems: 'center',
+    },
+    headerText: {
+        fontSize: 16,
+        color: '#555',
+    },
+    receiverText: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#111',
+        marginTop: 5,
+    },
+    card: {
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 20,
+        marginTop: 30,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 3 },
+        shadowRadius: 6,
+        elevation: 5,
+        alignItems: 'center',
     },
     label: {
         fontSize: 18,
-        marginBottom: 20,
+        color: '#444',
+        marginBottom: 10,
     },
-     button: {
+    input: {
         width: '100%',
-        padding: 15,
-        backgroundColor: '#4CAF50',
+        fontSize: 32,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        textAlign: 'center',
+        padding: 10,
+        color: '#000',
+    },
+    button: {
+        backgroundColor: colors.color1,
+        padding: 16,
+        borderRadius: 8,
         alignItems: 'center',
-        borderRadius: 5,
+        marginTop: 40,
     },
     buttonText: {
-        fontSize: 18,
         color: '#fff',
-        fontWeight: 'bold',
-    }
-})
+        fontSize: 18,
+        fontWeight: '600',
+    },
+});
