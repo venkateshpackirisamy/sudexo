@@ -968,26 +968,32 @@ router.get('/transactions', authenticateToken, async (req, res) => {
             const employee_id = req.query.employee_id
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
             const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) : 0
+            const type = req.query.type
             const month_filter = {}
-            if(month!=0){
-                month_filter.month=month
+            if (month != 0) {
+                month_filter.month = month
             }
+            const type_filter = {}
+            if(type=='DR'||type=='CR')
+                type_filter.type = type
+
             const pages = 5
             if (employee_id) {
                 client.connect()
                 const Db = client.db(dbName)
                 const collection = Db.collection('Transaction')
                 const result = await collection.aggregate([
-                    { 
+                    {
                         $addFields: {
-                            month: {"$month": "$date_time" } 
+                            month: { "$month": "$date_time" }
                         }
                     },
                     {
                         $match: {
-                            $and:[
-                            {$or: [{ from_id: employee_id }, { to_id: employee_id }]},
-                            month_filter
+                            $and: [
+                                { $or: [{ from_id: employee_id }, { to_id: employee_id }] },
+                                month_filter,
+                                type_filter
                             ]
                         }
                     },
@@ -1072,12 +1078,12 @@ router.get('/employees', authenticateToken, async (req, res) => {
             const level = (parseInt(req.query.level) && req.query.level > 0) ? parseInt(req.query.level) : 0
             const nameReg = req.query.name
             const nameFilter = {}
-            if(nameReg){
-                nameFilter.$or=[]
-                nameFilter.$or.push({name:RegExp(nameReg.toUpperCase())})
-                nameFilter.$or.push({name:RegExp(nameReg.toUpperCase())})
-                nameFilter.$or.push({name:RegExp(nameReg.toLowerCase())})
-                nameFilter.$or.push({name:RegExp(nameReg[0].toUpperCase() + nameReg.slice(1).toLowerCase())})
+            if (nameReg) {
+                nameFilter.$or = []
+                nameFilter.$or.push({ name: RegExp(nameReg.toUpperCase()) })
+                nameFilter.$or.push({ name: RegExp(nameReg.toUpperCase()) })
+                nameFilter.$or.push({ name: RegExp(nameReg.toLowerCase()) })
+                nameFilter.$or.push({ name: RegExp(nameReg[0].toUpperCase() + nameReg.slice(1).toLowerCase()) })
             }
             let filter = {}
             if (level == 1)
@@ -1094,7 +1100,7 @@ router.get('/employees', authenticateToken, async (req, res) => {
             const result = await collection.aggregate([
                 {
                     $match: {
-                        $and: [{ admin_id: req.user.id }, filter,nameFilter]
+                        $and: [{ admin_id: req.user.id }, filter, nameFilter]
                     }
                 },
                 {
@@ -1300,7 +1306,7 @@ router.get('/employeeSpending', authenticateToken, async (req, res) => {
 
             const today = new Date()
             const page_no = (parseInt(req.query.page_no) && req.query.page_no > 0) ? parseInt(req.query.page_no) : 1
-            const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) :( today.getMonth()+1)
+            const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) : (today.getMonth() + 1)
             const pages = 7
             await client.connect()
             const Db = client.db(dbName)
@@ -1600,6 +1606,253 @@ router.post('/activateEmployee', authenticateToken, async (req, res) => {
     }
 })
 
+router.post('/resetPassword', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+        if (req.user) {
+            const { employee_id, password } = req.body
+            if (employee_id && password) {
+                const hPassword = await hashPassword(password)
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                    $set: {
+                        password: {
+                            $cond: {
+                                if: { $eq: ["$admin_id", req.user.id] },
+                                then: { $literal: hPassword },
+                                else: "$password" 
+                            }
+                        }
+                    }
+                }
+                ], { returnDocument: 'after' }
+                )
+                if (employee) {
+                    if (req.user.id === employee.admin_id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "Password Changed ",
+                            "description": "Password Changed successful.",
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
+            }
+            else {
+                if (!employee_id) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "employee_id",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+                else if (!password) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "password",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        await client.close()
+    }
+})
+
+router.post('/resetPin', authenticateToken, async (req, res) => {
+    const client = new MongoClient(uri)
+    try {
+
+        if (req.user) {
+            const { employee_id, pin } = req.body
+            if (employee_id && parseInt(pin)) {
+                await client.connect()
+                const Db = client.db(dbName)
+                const collection = Db.collection('EmployeeUsers')
+                const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                    $set: {
+                        pin: {
+                            $cond: {
+                                if: { $eq: ["$admin_id", req.user.id] },
+                                then: pin,
+                                else: "$pin"
+                            }
+                        }
+                    }
+                }
+                ]
+                )
+                if (employee) {
+                    if (req.user.id === employee.admin_id) {
+                        res.status(200).json({
+                            "status": "success",
+                            "message": "Pin Changed ",
+                            "description": "Pin Changed successful.",
+                            "status_code": 200
+                        })
+                        return
+                    }
+                    else {
+                        res.status(401).send({
+                            "status": "error",
+                            "message": "invalid admin",
+                            "description": "You are unauthorized to access the requested resource",
+                            "errors": [{
+                                "error": 'you are not the admin of this Account'
+                            }],
+                            "status_code": 401
+                        })
+                        return
+                    }
+                }
+                else {
+                    res.status(404).json(
+                        {
+                            "status": "error",
+                            "message": "employee not found",
+                            "description": "We could not find the resource you requested",
+                            "errors": [{
+                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                            }],
+                            "status_code": 404
+                        })
+                    return
+                }
+            }
+            else {
+                if (!employee_id) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "employee_id",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+                else if (!pin) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "pin",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+                else if (!parseInt(pin)) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "pin",
+                                "error": "Pin must be Number"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+
+
+            }
+        }
+        else {
+            res.status(401).json(
+                {
+                    "status": "error",
+                    "message": "UNAUTHORIZED",
+                    "description": "You are unauthorized to access the requested resource. Please log in",
+                    "errors": "Invalid Token",
+                    "status_code": 401
+                }
+            )
+            return
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.send('error')
+    }
+    finally {
+        await client.close()
+    }
+})
 
 
 module.exports = router;

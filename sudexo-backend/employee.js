@@ -316,8 +316,8 @@ router.post('/pay', authenticateToken, async (req, res) => {
                                 res.status(200).json({
                                     "status": "success",
                                     "message": "payment Success",
-                                    "amount": ` ₹${amount}`,
-                                    "description": `send to ${to_id}`,
+                                    "amount": ` ${amount}`,
+                                    "receiver": `${to_id}`,
                                     "status_code": 200
                                 })
                                 return
@@ -515,7 +515,7 @@ router.get('/transactionsSummary', authenticateToken, async (req, res) => {
     try {
         if (req.user) {
             const today =  new Date()
-            const month = today.getMonth()+1
+            const month = (parseInt(req.query.month) && req.query.month > 0) ? parseInt(req.query.month) :( today.getMonth()+1)
             client.connect()
             const Db = client.db(dbName)
             const collection = Db.collection('Transaction')

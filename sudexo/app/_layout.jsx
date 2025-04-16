@@ -12,10 +12,11 @@ export default function RootLayout() {
       <Stack.Screen name="pin" options={{ headerShown: false }} />
       <Stack.Screen name="balance" options={{ headerShown: false }} />
       <Stack.Screen name="payment" options={{ headerShown: false }} />
+      <Stack.Screen name="billPayment" options={{ headerShown: false }} />
       <Stack.Screen name='profile' options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
       <Stack.Screen name="employeeRegister" options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
       <Stack.Screen name="employee" options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
-      <Stack.Screen name="billPayment" options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
+      <Stack.Screen name="reset" options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
       <Stack.Screen name="scanQr" options={{headerTitle:'Scan & Pay', headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
       <Stack.Screen name="pay" options={{headerTitle:'Payment', headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />
       <Stack.Screen name="createMultiple" options={{headerStyle:{backgroundColor:colors.color1}, headerTitleStyle:{color:'white'}, headerTintColor:'white'}} />

@@ -9,7 +9,7 @@ const initialData = {
   totalPages: 1,
 };
 
-const usePagination = (emp_id,month) => {
+const usePagination = (emp_id,month,type) => {
 
   const [initialLoader, setInitialLoader] = useState(true);
   const [data, setData] = useState(initialData.data);
@@ -23,7 +23,8 @@ const usePagination = (emp_id,month) => {
     const token = await AsyncStorage.getItem('@userToken');
     try {
       const filterParams = `&month=${month}`
-      const response1 = await fetch(`${uri}/admin/transactions?employee_id=${emp_id}&page_no=${page}${(month!=null && month!=0)?filterParams:''}`, {
+      const typeParams = `&type=${type}`
+      const response1 = await fetch(`${uri}/admin/transactions?employee_id=${emp_id}&page_no=${page}${(month!=null && month!=0)?filterParams:''}${(type!=null)?typeParams:''} `, {
         headers: {
             'Content-type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -73,7 +74,7 @@ const usePagination = (emp_id,month) => {
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData(1); // Refresh from the first page
-  }, [month]);
+  }, [month,type]);
 
   // Load more data
   const loadMore = () => {

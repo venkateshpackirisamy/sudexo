@@ -1,134 +1,183 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions } from 'react-native';
+import {
+    View, Text, StyleSheet, TouchableOpacity,
+    ActivityIndicator, SafeAreaView, Dimensions
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../assets/color';
-const uri = process.env.EXPO_PUBLIC_API_URL;
+
 const { height, width } = Dimensions.get('window');
-const BankBalancePage = () => {
-    const item = useLocalSearchParams();
-    const [loading, setLoading] = useState(true)
-    const [response,setResponse] = useState(null)
+const uri = process.env.EXPO_PUBLIC_API_URL;
+
+const Payment = () => {
+    let item = useLocalSearchParams();
+    const [loading, setLoading] = useState(true);
+    const [response, setResponse] = useState(null);
+
     useEffect(() => {
-        // fetchBalance()
-        if (item.to_id) {
-            makePayment()
+        if (item) {
+            makePayment();
         }
-    }, [])
+    },[]);
 
     const makePayment = async () => {
         const token = await AsyncStorage.getItem('@userToken');
         try {
-            const response1 = await fetch(`${uri}/employee/pay`, {
+            const res = await fetch(`${uri}/employee/pay`, {
+                method: 'POST',
                 headers: {
-                    'Content-type': 'application/json',
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                method: "POST",
-                body: JSON.stringify({ pin: item.pin, amount: item.amount, to_id: item.to_id })
-            })
-            const result1 = await response1.json()
-            console.log(result1)
-            setResponse(result1)
-            router.setParams({})
-
+                body: JSON.stringify({
+                    pin: item.pin,
+                    amount: item.amount,
+                    to_id: item.to_id
+                })
+            });
+            const result = await res.json();
+            setResponse(result);
+            setLoading(false);
+            router.setParams({});
+            item = null
+        } catch (err) {
+            console.log(err);
+            setLoading(false);
         }
-        catch (error) {
-            console.log(error)
-        }
-    }
+    };
 
-    if (response==null) {
-
+    if (loading || response === null) {
         return (
-            <SafeAreaView style={styles.loadingContainor}>
+            <SafeAreaView style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.color1} />
-                <Text>Loading...</Text>
+                <Text style={{ marginTop: 10 }}>Processing Payment...</Text>
             </SafeAreaView>
-        )
-
+        );
     }
+
+    const isSuccess = response.status_code === 200;
+    const isFailed = response.status_code === 401 || response.status_code === 400;
+
     return (
-
         <View style={styles.container}>
-            {/* { balance!=null && <Text style={styles.title}>Account Balance</Text>}
-            {balance!=null && <Text style={styles.balance}>₹{balance}</Text>} */}
-            {/* {err!=null && <Text style={styles.error}>{err}</Text>} */}
-            {/*             
-            <Text>{item.amount },{ item.to_id},{ item.pin}</Text> */}
-            <View style={{ padding: 20 }}>
-
-                <View style={{ height: height * 0.5, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text>{response.status_code == 401 && <AntDesign name="closecircle" size={150} color="red" />}</Text>
-                    <Text>{response.status_code == 200 && <AntDesign name="checkcircle" size={150} color="green" />}</Text>
-                    <Text>{response.status_code == 400 && <FontAwesome name="warning" size={150} color="orange" />}</Text>
+            <View style={styles.card}>
+                <View style={styles.iconContainer}>
+                    {isSuccess && <AntDesign name="checkcircle" size={100} color="#4BB543" />}
+                    {isFailed && response.status_code === 401 && (
+                        <AntDesign name="closecircle" size={100} color="#FF3B30" />
+                    )}
+                    {isFailed && response.status_code === 400 && (
+                        <FontAwesome name="warning" size={100} color="#FFA500" />
+                    )}
                 </View>
 
-                <Text style={{ fontWeight: 'bold', fontSize: 25, alignSelf: 'center', color: item.status_code == 200 ? 'green' : 'red' }}>
-                    {response.status_code == 200 ? 'Payment Success' : 'Payment Failed'}</Text>
+                <Text style={[styles.statusText, { color: isSuccess ? '#4BB543' : '#FF3B30' }]}>
+                    {isSuccess ? 'Payment Successful' : 'Payment Failed'}
+                </Text>
 
-                {response.amount && <Text style={{ fontWeight: 'bold', fontSize: 25, alignSelf: 'center' }}>{response.amount}</Text>}
+                {response.amount && (
+                    <Text style={styles.amountText}>₹{response.amount}</Text>
+                )}
+                {response.receiver && (
+                    <View style={styles.detailsContainer}>
+                        <Text style={styles.detailLabel}>To:</Text>
+                        <Text style={styles.detailValue}>{response.receiver}</Text>
+                    </View>
+                )}
 
-                {!(response.status_code == 200) && <Text style={{ fontWeight: 'bold', fontSize: 20, alignSelf: 'center' }}>{response.message}</Text>}
 
-                {response.status_code == 200 && <Text style={{ fontWeight: 'bold', fontSize: 20, alignSelf: 'center' }}>{response.description}</Text>}
+                <Text style={styles.messageText}>
+                    {isSuccess ? response.description : response.message}
+                </Text>
+
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => router.replace('/EmpHome')}
+                >
+                    <Text style={styles.buttonText}>Back to Home</Text>
+                </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.button} onPress={() => { router.replace('/EmpHome') }}>
-                <Text style={styles.buttonText}>Back to Home</Text>
-            </TouchableOpacity>
         </View>
-
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // justifyContent: 'center',
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-        backgroundColor: 'white'
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'white',
+    },
+    card: {
+        width: width * 0.85,
+        padding: 30,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        alignItems: 'center',
+    },
+    iconContainer: {
         marginBottom: 20,
     },
-    error: {
+    statusText: {
         fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        color: 'red',
+        fontWeight: '700',
+        marginBottom: 10,
         textAlign: 'center',
     },
-    balance: {
-        fontSize: 40,
+    amountText: {
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#4CAF50',
-        marginBottom: 30,
+        color: '#333',
+        marginVertical: 10,
+    },
+    messageText: {
+        fontSize: 16,
+        textAlign: 'center',
+        color: '#555',
+        marginBottom: 25,
     },
     button: {
-        width: '80%',
-        padding: 15,
-        backgroundColor: '#4CAF50',
-        alignItems: 'center',
-        borderRadius: 5,
-        borderRadius: 25,
-        margin: 25,
+        backgroundColor: colors.color1,
+        paddingVertical: 14,
+        paddingHorizontal: 30,
+        borderRadius: 30,
+        elevation: 3,
+        marginTop: 10,
     },
     buttonText: {
-        fontSize: 18,
-        color: '#fff',
+        color: 'white',
         fontWeight: 'bold',
+        fontSize: 16,
     },
-    loadingContainor: {
-        flex: 1,
-        backgroundColor: 'white',
+    detailsContainer: {
+        marginTop: 10,
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center'
-    }
+    },
+    detailLabel: {
+        fontSize: 16,
+        color: '#888',
+    },
+    detailValue: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    
 });
 
-export default BankBalancePage;
+export default Payment;

@@ -7,13 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import ToastManager, { Toast } from "toastify-react-native";
 import colors from "../assets/color";
+import { useIsFocused } from "@react-navigation/native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function Index() {
   const [modalVisible, setModalVisible] = useState(false)
   const [account,setAccount]= useState([])
   const[selectAcc,setSelectAcc] = useState()
- 
+  const isfocuse = useIsFocused()
 
   useEffect(() => {
     checkuser()
@@ -23,7 +24,8 @@ export default function Index() {
         else if (res.token && res.admin === 'true')
           router.push('/AdminHome')
       })
-  }, [])
+  }, [isfocuse])
+  
   const checkuser = async () => {
     const token = await AsyncStorage.getItem('@userToken');
     const is_admin = await AsyncStorage.getItem('is_admin');

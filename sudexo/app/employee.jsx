@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import ToastManager, { Toast } from "toastify-react-native";
 import colors from "../assets/color";
+import { Route } from "expo-router/build/Route";
 const uri = process.env.EXPO_PUBLIC_API_URL;
 export default function Index() {
 
@@ -27,6 +28,7 @@ export default function Index() {
   const [err, setErr] = useState('')
   const [month, setMonth] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [type,setType] = useState(null)
   const monthData = [
     { label: 'Jan', mon: 1, },
     { label: 'Feb', mon: 2, },
@@ -53,7 +55,7 @@ export default function Index() {
   useEffect(() => {
     if (month != null)
       handleRefresh();
-  }, [month]);
+  }, [month,type]);
 
   const setUser = async () => {
     const result = await AsyncStorage.getItem('@userToken')
@@ -112,7 +114,7 @@ export default function Index() {
     handleRefresh,
     loadMore,
     initialLoader,
-  } = usePagination(item.emp_id, month);
+  } = usePagination(item.emp_id, month,type);
 
   const renderFooter = () => {
     if (!loadingMore || data.length < 4) return null; // Show footer loader only for subsequent pages
@@ -281,6 +283,12 @@ export default function Index() {
             <Text style={{ fontWeight: 'bold', fontSize: 20 }}>Balance</Text>
             <Text style={{ fontSize: 20, fontWeight: "semibold" }}>₹{empData.data?.balance}</Text>
           </View>
+
+          <TouchableOpacity onPress={() => { router.push({ pathname: '/reset', params: { emp_id: item.emp_id } }) }}
+            style={[styles.button, { marginBlock: 10 }]}>
+            <Text style={styles.buttonText}>Reset</Text>
+          </TouchableOpacity>
+
           <View style={{ flexDirection: 'row', width: '100%', gap: 10, justifyContent: 'center' }}>
             {empData.data?.active ?
               <TouchableOpacity onPress={() => setModalVisibleSatus(true)} style={[styles.button, { backgroundColor: 'red' }]} >
@@ -313,10 +321,20 @@ export default function Index() {
           }
         </View> */}
       </View>
-      <TouchableOpacity onPress={() => setModalVisibleFilter(true)} style={styles.filter}>
-        <Text style={{ fontSize: 15, fontWeight: "500" }}>Filters </Text>
-        <Ionicons name="filter" size={15} color="black" />
-      </TouchableOpacity>
+      <View style={{flexDirection:'row'}}>
+        <TouchableOpacity onPress={() => setType(type=='CR'?null:'CR')} style={[styles.filter, type == 'CR' && { borderWidth: 1, borderColor: 'black' }]}>
+          <Text style={{ fontSize: 15, fontWeight: "500" }}>Credit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setType(type=='DR'?null:'DR') } style={[styles.filter, type == 'DR' && { borderWidth: 1, borderColor: 'black' }]}>
+          <Text style={{ fontSize: 15, fontWeight: "500" }}>Dedit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setModalVisibleFilter(true)} style={styles.filter}>
+          <Text style={{ fontSize: 15, fontWeight: "500" }}>Filters </Text>
+          <Ionicons name="filter" size={15} color="black" />
+        </TouchableOpacity>
+      </View>
       <Modal
         animationType="slide"
         transparent={true}
@@ -350,7 +368,7 @@ export default function Index() {
       </Modal>
 
 
-      <View style={{ 'width': '100%', height: '60%', alignItems: 'center', gap: 10, paddingVertical: 10, backgroundColor: 'white' }}>
+      <View style={{ 'width': '100%', height: '56%', alignItems: 'center', gap: 10, paddingVertical: 10, backgroundColor: 'white' }}>
 
         {!refreshing ?
           <FlatList
@@ -366,7 +384,7 @@ export default function Index() {
                 </View>
 
                 <View style={{ justifyContent: 'center', width: '80%' }}>
-                  <Text style={{ 'fontSize': 17 }}>{item.type === 'DR' ? "Send to" : 'Recived from'}</Text>
+                  <Text style={{ 'fontSize': 17 }}>{item.type === 'DR' ? "Send to" : 'Received from'}</Text>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ 'fontWeight': "bold", 'fontSize': 20 }}>{item.type === 'DR' ? item.to_id : item.from_id}</Text>
                     <Text style={{ 'fontWeight': "bold", 'fontSize': 20, alignSelf: 'flex-end', color: item.type === 'DR' ? "red" : 'green' }}> ₹{item.amount} </Text>
@@ -379,7 +397,7 @@ export default function Index() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
-            ListEmptyComponent={<View style={{ borderWidth:1, borderRadius:10,borderColor:'#A9A9A9', height: height * 0.5, width: width * 0.9, justifyContent: 'center', alignItems: 'center' }}> <Text style={{ fontWeight: 'bold', fontSize: 25 }}> No Transaction Yet</Text></View>}
+            ListEmptyComponent={<View style={{ borderWidth: 1, borderRadius: 10, borderColor: '#A9A9A9', height: height * 0.49, width: width * 0.9, justifyContent: 'center', alignItems: 'center' }}> <Text style={{ fontWeight: 'bold', fontSize: 25 }}> No Transaction Yet</Text></View>}
             ListFooterComponent={renderFooter}
             onEndReached={loadMore}
             onEndReachedThreshold={0.1}
@@ -405,7 +423,7 @@ const styles = StyleSheet.create({
 
   },
   haeder: {
-    height: '35%',
+    height: '40%',
     width: '100%',
     padding: 20,
     alignItems: 'center',
@@ -517,7 +535,6 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'white',
     alignItems: 'center',
-    alignSelf: 'flex-end',
     marginHorizontal: 15,
     borderRadius: 10,
     borderWidth: 0.5,

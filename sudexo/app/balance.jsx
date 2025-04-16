@@ -47,7 +47,7 @@ const BankBalancePage = () => {
     if (loading) {
         return (
             <SafeAreaView style={styles.loadingContainor}>
-                <ActivityIndicator size="large" color="#00ff00" />
+                <ActivityIndicator size="large" color={colors.color1} />
                 <Text>Loading...</Text>
             </SafeAreaView>
         )

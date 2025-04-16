@@ -5,7 +5,9 @@ import { TouchableOpacity } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
+import { useIsFocused } from "@react-navigation/native";
 export default function Index() {
+    const isfocuse = useIsFocused()
   useEffect(() => {
     checkuser()
       .then(res => {
@@ -14,7 +16,7 @@ export default function Index() {
         else if (res.token && res.admin === 'true')
           router.push('/AdminHome')
       })
-  }, [])
+  }, [isfocuse])
   const checkuser = async () => {
     const token = await AsyncStorage.getItem('@userToken');
     const is_admin = await AsyncStorage.getItem('is_admin');

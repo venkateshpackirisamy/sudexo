@@ -7,82 +7,131 @@ import ToastManager, { Toast } from "toastify-react-native";
 import colors from "../assets/color";
 import { TouchableOpacity } from "react-native";
 const { height, width } = Dimensions.get('window');
+import { Ionicons } from '@expo/vector-icons';
 export default function Pin() {
 
     const item = useLocalSearchParams();
     const [id, setID] = useState('');
     const Submit = () => {
+        console.log('submit')
         if (id.length == 10)
             router.push({ pathname: '/pay', params: { to_id: id } })
-        else
+        else {
             Toast.error(`invalid ${item.type == 'mobile' ? 'mobile number' : 'consumer id'}`)
+
+        }
     }
 
-    return (
+    const getIcon = () => {
+        return item.type === 'mobile'
+            ? <Ionicons name="call-outline" size={24} color="#fff" />
+            : <Ionicons name="flash-outline" size={24} color="#fff" />;
+    };
 
-        <View style={styles.container}>
-            <StatusBar style='light' backgroundColor={colors.color1} />
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar style="light" backgroundColor={colors.color1} />
             <ToastManager />
-            <View style={styles.haeder}>
-                <Text style={{ fontSize: 20 }}>{item.type}</Text>
+
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                </TouchableOpacity>
+                <View style={styles.headerContent}>
+                    {getIcon()}
+                    <Text style={styles.headerText}>
+                        {item.type === 'mobile' ? 'Mobile Recharge' : 'Electricity Bill'}
+                    </Text>
+                </View>
             </View>
-            <View style={{ flex: 1, padding: 10, alignItems: 'center' }}>
-                <Text style={styles.label}>{item.type == 'mobile' ? "Enter Modile Number" : 'Enter consumber ID'}</Text>
+
+            <View style={styles.card}>
+                <Text style={styles.label}>
+                    {item.type === 'mobile' ? "Enter Mobile Number" : "Enter Consumer ID"}
+                </Text>
+
                 <TextInput
                     style={styles.input}
                     value={id}
-                    onChangeText={data => { setID(data) }}
+                    onChangeText={setID}
                     keyboardType="numeric"
                     maxLength={10}
-                    placeholder={item.type == 'mobile' ? "Modile Number" : 'consumber ID'}
-                    onSubmitEditing={() => { Submit() }}
+                    placeholder={item.type === 'mobile' ? "Mobile Number" : "Consumer ID"}
+                    onSubmitEditing={Submit}
+                    placeholderTextColor="#aaa"
                 />
-            </View>
-            <View style={{ padding: 20 }}>
+
                 <TouchableOpacity style={styles.button} onPress={Submit}>
-                    <Text style={styles.buttonText}>Next</Text>
+                    <Text style={styles.buttonText}>Continue</Text>
                 </TouchableOpacity>
             </View>
-
-        </View>)
+        </SafeAreaView>
+    );
 }
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#f5f7fa',
     },
-    haeder: {
-        height: height * 0.1,
-        width: '100%',
-        padding: 20,
-        backgroundColor: 'white',
+    header: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10
+        backgroundColor: colors.color1,
+        paddingHorizontal: 15,
+        paddingVertical: 20,
     },
-    input: {
-        width: width * 0.8,
-        height: height * 0.06,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 5,
-        fontSize: 15,
-        textAlign: 'center',
-        marginBottom: 20,
+    backButton: {
+        marginRight: 10,
     },
-    label: {
-        fontSize: 18,
-        marginBottom: 20,
-    },
-    button: {
-        width: '100%',
-        padding: 15,
-        backgroundColor: '#4CAF50',
+    headerContent: {
+        flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 5,
+        gap: 10,
     },
-    buttonText: {
-        fontSize: 18,
+    headerText: {
+        fontSize: 20,
         color: '#fff',
         fontWeight: 'bold',
-    }
-})
+    },
+    card: {
+        marginTop: 40,
+        marginHorizontal: 20,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 25,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 5,
+    },
+    label: {
+        fontSize: 16,
+        marginBottom: 15,
+        color: '#333',
+        fontWeight: '500',
+    },
+    input: {
+        width: '100%',
+        height: 50,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+        fontSize: 16,
+        marginBottom: 25,
+        backgroundColor: '#fafafa',
+    },
+    button: {
+        backgroundColor: colors.color1,
+        paddingVertical: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 17,
+        fontWeight: 'bold',
+    },
+});
