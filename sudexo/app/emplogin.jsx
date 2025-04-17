@@ -9,14 +9,14 @@ import ToastManager, { Toast } from "toastify-react-native";
 import colors from "../assets/color";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function emplogin() {
   useEffect(() => {
     checkuser()
       .then(res => {
         if (res.token && res.admin === 'false')
-          router.push('/EmpHome')
+          router.replace('/EmpHome')
         else if (res.token && res.admin === 'true')
-          router.push('/AdminHome')
+          router.replace('/AdminHome',)
       })
   }, [])
   const checkuser = async () => {
@@ -66,7 +66,7 @@ export default function Index() {
                 console.log(data.data)
                 storeUserToken(data.data.token, data.data.name, "false")
                   .then(
-                    router.push('/EmpHome')
+                    router.replace('/EmpHome',{ overrideInitialScreen: false })
                   )
 
               }
@@ -100,6 +100,7 @@ export default function Index() {
                   placeholderTextColor="#aaa"
                   secureTextEntry
                   value={password}
+                  maxLength={15}
                   onChangeText={(text) => setPassword(text)}
                 /> 
               </View>

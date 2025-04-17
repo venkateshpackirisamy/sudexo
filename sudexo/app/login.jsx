@@ -2,7 +2,7 @@ import { Text, View, Dimensions, StyleSheet, SafeAreaView, TextInput, TouchableO
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
-import { router } from 'expo-router';
+import { router, useRootNavigationState, useSegments } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import ToastManager, { Toast } from "toastify-react-native";
@@ -10,19 +10,22 @@ import colors from "../assets/color";
 import { useIsFocused } from "@react-navigation/native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function login() {
   const [modalVisible, setModalVisible] = useState(false)
   const [account,setAccount]= useState([])
   const[selectAcc,setSelectAcc] = useState()
   const isfocuse = useIsFocused()
-
   useEffect(() => {
     checkuser()
       .then(res => {
-        if (res.token && res.admin === 'false')
-          router.push('/EmpHome')
-        else if (res.token && res.admin === 'true')
-          router.push('/AdminHome')
+        if (res.token && res.admin === 'false'){
+          router.dismissAll();
+          router.replace('/EmpHome')
+        }
+        else if (res.token && res.admin === 'true'){
+          router.dismissAll();
+          router.replace('/AdminHome')
+        }
       })
   }, [isfocuse])
   
@@ -96,7 +99,7 @@ export default function Index() {
                 else if (data.data) {
                   storeUserToken(data.data.token, data.data.name, "true")
                     .then(
-                      router.push('/AdminHome')
+                      router.dismissAll(),router.replace('/AdminHome')
                     )
 
                 }

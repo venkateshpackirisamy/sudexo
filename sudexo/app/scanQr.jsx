@@ -4,7 +4,7 @@ import { CameraView, Camera } from "expo-camera";
 import { router } from "expo-router";
 import colors from "../assets/color";
 const { height, width } = Dimensions.get('window');
-export default function App() {
+export default function scanQr() {
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
 

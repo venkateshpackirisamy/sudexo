@@ -7,15 +7,21 @@ import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { useIsFocused } from "@react-navigation/native";
 export default function Index() {
-    const isfocuse = useIsFocused()
+  const isfocuse = useIsFocused()
   useEffect(() => {
-    checkuser()
-      .then(res => {
-        if (res.token && res.admin === 'false')
-          router.push('/EmpHome')
-        else if (res.token && res.admin === 'true')
-          router.push('/AdminHome')
-      })
+    if (isfocuse) {
+      checkuser()
+        .then(res => {
+          if (res.token && res.admin === 'false'){
+            router.dismissAll()
+            router.replace('/EmpHome')
+          }
+          else if (res.token && res.admin === 'true'){
+            router.dismissAll()
+            router.replace('/AdminHome')
+          }
+        })
+    }
   }, [isfocuse])
   const checkuser = async () => {
     const token = await AsyncStorage.getItem('@userToken');

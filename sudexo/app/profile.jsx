@@ -17,7 +17,7 @@ export default function Profile() {
         if (result)
             setUserName(result)
         else
-            router.push('/login')
+            router.replace('/login')
     }
     return (
         <SafeAreaView style={styles.container}>
@@ -37,7 +37,7 @@ export default function Profile() {
             </TouchableOpacity> */}
             
             
-            <TouchableOpacity style={styles.button} onPress={async () => { await AsyncStorage.clear(); router.replace('/login') }}>
+            <TouchableOpacity style={styles.button} onPress={async () => { await AsyncStorage.clear();router.dismissAll(); router.replace('/login') }}>
                 <Text style={styles.buttonText}>Logout</Text>
             </TouchableOpacity>
         </SafeAreaView>

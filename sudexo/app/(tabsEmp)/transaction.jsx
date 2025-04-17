@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import colors from "../../assets/color";
-export default function Index() {
+export default function transaction() {
   const [userName, setUserName] = useState()
   const [modalVisibleFilter, setModalVisibleFilter] = useState(false)
   const [lastSixMon, setLastSixMon] = useState([])
@@ -77,13 +77,13 @@ export default function Index() {
   } = usePagination(month);
 
   const renderFooter = () => {
-    if (!loadingMore || data.length < 5) return null; // Show footer loader only for subsequent pages
+    if (!loadingMore || data.length < 5) return null; 
     return <ActivityIndicator animating size="large" />;
   };
 
   const covert_date = (dateString) => {
     const date = new Date(dateString);
-    const dateOnly = date.toLocaleDateString();  // In local format, e.g., "3/26/2025"
+    const dateOnly = date.toLocaleDateString();  
     return dateOnly
   }
 

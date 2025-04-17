@@ -14,7 +14,7 @@ import colors from "../../assets/color";
 import { useIsFocused } from "@react-navigation/native";
 const uri = process.env.EXPO_PUBLIC_API_URL;
 const { height, width } = Dimensions.get('window');
-export default function Index() {
+export default function AdminHome() {
   const [userName, setUserName] = useState(null)
   const [totalEmp, setTotalEmp] = useState(0)
   const [token, setToken] = useState(null)
@@ -35,6 +35,7 @@ export default function Index() {
 
   useEffect(() => {
     if (token && isfocuse) {
+      setUser()
       getSat()
       getbarSat()
     }
@@ -63,7 +64,7 @@ export default function Index() {
       setToken(token)
     }
     else
-      router.push('/login')
+      router.replace('/login')
   }
 
   const getSat = () => {
@@ -88,6 +89,12 @@ export default function Index() {
                 setTotalEmp(data.result[0].total[0]?.total || 0)
                 setLoading(false)
 
+              }
+              else if(data.status_code == 401){
+                AsyncStorage.clear()
+                .then(
+                  router.replace('/login')
+                )
               }
             })
         })

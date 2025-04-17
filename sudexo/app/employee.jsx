@@ -28,7 +28,7 @@ export default function Index() {
   const [err, setErr] = useState('')
   const [month, setMonth] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [type,setType] = useState(null)
+  const [type, setType] = useState(null)
   const monthData = [
     { label: 'Jan', mon: 1, },
     { label: 'Feb', mon: 2, },
@@ -55,7 +55,7 @@ export default function Index() {
   useEffect(() => {
     if (month != null)
       handleRefresh();
-  }, [month,type]);
+  }, [month, type]);
 
   const setUser = async () => {
     const result = await AsyncStorage.getItem('@userToken')
@@ -114,7 +114,7 @@ export default function Index() {
     handleRefresh,
     loadMore,
     initialLoader,
-  } = usePagination(item.emp_id, month,type);
+  } = usePagination(item.emp_id, month, type);
 
   const renderFooter = () => {
     if (!loadingMore || data.length < 4) return null; // Show footer loader only for subsequent pages
@@ -165,8 +165,7 @@ export default function Index() {
 
   const changeStatus = () => {
     if (item.emp_id) {
-
-      const mode = empData.data?.active ? '/deactivateEmployee' : '/activateEmployee'
+      const mode = empData.data?.active ? '/deactivateEmployee' : '/activateEmployee/'
       fetch(`${uri}/admin${mode}`,
         {
           headers: {
@@ -175,13 +174,14 @@ export default function Index() {
             Authorization: `Bearer ${token}`,
           },
           method: "POST",
-          body: JSON.stringify({ employee_id: item.emp_id })
+          body: JSON.stringify({ employee_id: item.emp_id, email: empData.data.email })
         })
         .then(function (res) {
           res.json()
             .then(data => {
               if (data.status === 'error') {
-                Toast.error(element.error)
+                setModalVisibleSatus(false)
+                Toast.error(data.error)
               }
               else if (data.status_code == 200) {
                 setModalVisibleSatus(false)
@@ -321,12 +321,12 @@ export default function Index() {
           }
         </View> */}
       </View>
-      <View style={{flexDirection:'row'}}>
-        <TouchableOpacity onPress={() => setType(type=='CR'?null:'CR')} style={[styles.filter, type == 'CR' && { borderWidth: 1, borderColor: 'black' }]}>
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity onPress={() => setType(type == 'CR' ? null : 'CR')} style={[styles.filter, type == 'CR' && { borderWidth: 1, borderColor: 'black' }]}>
           <Text style={{ fontSize: 15, fontWeight: "500" }}>Credit</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setType(type=='DR'?null:'DR') } style={[styles.filter, type == 'DR' && { borderWidth: 1, borderColor: 'black' }]}>
+        <TouchableOpacity onPress={() => setType(type == 'DR' ? null : 'DR')} style={[styles.filter, type == 'DR' && { borderWidth: 1, borderColor: 'black' }]}>
           <Text style={{ fontSize: 15, fontWeight: "500" }}>Dedit</Text>
         </TouchableOpacity>
 

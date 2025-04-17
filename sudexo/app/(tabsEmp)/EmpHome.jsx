@@ -18,7 +18,7 @@ import colors from "../../assets/color";
 import { useIsFocused } from "@react-navigation/native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function EmpHome() {
   const [userName, setUserName] = useState(null)
   const isfocuse = useIsFocused()
   const [series, setseries] = useState([])
@@ -27,7 +27,7 @@ export default function Index() {
   const [modalVisible, setModalVisible] = useState(false)
   const [month, setMonth] = useState(0)
   const [filterVar, setfilterVar] = useState(0)
-  const [lastSixMon,setLastSixMon] = useState([])
+  const [lastSixMon, setLastSixMon] = useState([])
   const months = [
     { label: 'Jan', mon: 1, },
     { label: 'Feb', mon: 2, },
@@ -50,9 +50,12 @@ export default function Index() {
   }, [])
 
   useEffect(() => {
-    if (token)
+    if (token) {
       getSat()
-  }, [isfocuse, token,month])
+      setUser();
+      console.log('usEffect')
+    }
+  }, [isfocuse, token, month])
 
   const setUser = async () => {
     const token = await AsyncStorage.getItem('@userToken')
@@ -63,7 +66,7 @@ export default function Index() {
       setUserName(result)
     }
     else
-      router.push('/login')
+      router.replace('/login')
   }
 
   const getMonths = () => {
@@ -102,10 +105,16 @@ export default function Index() {
                   ]
                   setseries(sat)
                 }
-                else{
+                else {
                   setseries({})
                 }
                 setLoading(false)
+              }
+              else if (data.status_code == 401) {
+                AsyncStorage.clear()
+                  .then(
+                    router.replace('/login')
+                  )
               }
             })
         })
@@ -274,7 +283,7 @@ export default function Index() {
         </View> */}
 
         <View style={styles.dashBoard}>
-          <View style={{ width: '100%',flexDirection:'row',justifyContent:'space-between' }}>
+          <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ fontWeight: 'bold' }}>Monthly Transaction summary</Text>
             <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.filter}>
               <Text style={{ fontSize: 15, fontWeight: "500" }}>Filters </Text>
@@ -293,7 +302,7 @@ export default function Index() {
                   <View style={styles.modelHaeder}>
 
                     <Pressable onPress={() => { setModalVisible(false), setfilterVar(month) }}><AntDesign name="close" size={24} color="black" /></Pressable>
-                    <Text style={{ fontWeight: 'bold', fontSize: 18 ,}}>Months</Text>
+                    <Text style={{ fontWeight: 'bold', fontSize: 18, }}>Months</Text>
                   </View>
                   <View style={{ gap: 10, width: '100%', alignItems: 'center' }}>
                     {lastSixMon.map((item) => {
@@ -431,12 +440,12 @@ const styles = StyleSheet.create({
   noTranscations: {
     // flex: 1,
     width: "100%",
-    height:height*0.4,
+    height: height * 0.4,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 10, 
+    padding: 10,
 
   },
   filter: {
@@ -487,7 +496,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     // justifyContent: 'space-between',
     width: '100%',
-    gap:70,
+    gap: 70,
   },
   filter1: {
     padding: 8,

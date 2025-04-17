@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { height, width } = Dimensions.get('window');
 import colors from "../assets/color";
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function employeeRegister() {
     const[token,setToken]= useState('')
     useEffect(() => {
         (async () => {

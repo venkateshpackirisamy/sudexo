@@ -9,7 +9,7 @@ import ToastManager, { Toast } from "toastify-react-native";
 import colors from "../assets/color";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function reset() {
 
 
     useEffect(() => {

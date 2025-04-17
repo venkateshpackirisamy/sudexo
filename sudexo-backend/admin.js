@@ -974,7 +974,7 @@ router.get('/transactions', authenticateToken, async (req, res) => {
                 month_filter.month = month
             }
             const type_filter = {}
-            if(type=='DR'||type=='CR')
+            if (type == 'DR' || type == 'CR')
                 type_filter.type = type
 
             const pages = 5
@@ -1507,80 +1507,117 @@ router.post('/deactivateEmployee', authenticateToken, async (req, res) => {
     }
 })
 
-router.post('/activateEmployee', authenticateToken, async (req, res) => {
+router.post('/activateEmployee/', authenticateToken, async (req, res) => {
     const client = new MongoClient(uri)
     try {
 
         if (req.user) {
-            const { employee_id } = req.body
-            if (employee_id) {
+            const { employee_id, email } = req.body
+            if (employee_id && email) {
                 await client.connect()
                 const Db = client.db(dbName)
                 const collection = Db.collection('EmployeeUsers')
-                const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
-                    $set: {
-                        active: {
-                            $cond: {
-                                if: { $eq: ["$admin_id", req.user.id] },
-                                then: true,
-                                else: "$active"
+                const employees = await collection.find({ email: email }).toArray()
+                let is_active = false
+                employees.forEach((item) => {
+                    if (item.active)
+                        is_active = true
+                })
+
+                if (employees.length > 0 && !is_active) {
+                    const employee = await collection.findOneAndUpdate({ id: employee_id }, [{
+                        $set: {
+                            active: {
+                                $cond: {
+                                    if: { $eq: ["$admin_id", req.user.id] },
+                                    then: true,
+                                    else: "$active"
+                                }
                             }
                         }
                     }
-                }
-                ]
-                )
-                if (employee) {
-                    if (req.user.id === employee.admin_id) {
-                        res.status(200).json({
-                            "status": "success",
-                            "message": "Status Changed ",
-                            "description": "Status Changed successful.",
-                            "status_code": 200
-                        })
-                        return
+                    ]
+                    )
+                    if (employee) {
+                        if (req.user.id === employee.admin_id) {
+                            res.status(200).json({
+                                "status": "success",
+                                "message": "Status Changed ",
+                                "description": "Status Changed successful.",
+                                "status_code": 200
+                            })
+                            return
+                        }
+                        else {
+                            res.status(401).send({
+                                "status": "error",
+                                "message": "invalid admin",
+                                "description": "You are unauthorized to access the requested resource",
+                                "errors": [{
+                                    "error": 'you are not the admin of this Account'
+                                }],
+                                "status_code": 401
+                            })
+                            return
+                        }
                     }
-                    else {
-                        res.status(401).send({
-                            "status": "error",
-                            "message": "invalid admin",
-                            "description": "You are unauthorized to access the requested resource",
-                            "errors": [{
-                                "error": 'you are not the admin of this Account'
-                            }],
-                            "status_code": 401
-                        })
-                        return
-                    }
                 }
-                else {
+                else if (employees.length == 0) {
                     res.status(404).json(
                         {
                             "status": "error",
                             "message": "employee not found",
                             "description": "We could not find the resource you requested",
                             "errors": [{
-                                "error": 'The employee id provided does not exist in our records. Please check the employee id and try again.'
+                                "error": 'The email id provided does not exist in our records. Please check the email id and try again.'
                             }],
                             "status_code": 404
                         })
                     return
                 }
+                else if (is_active) {
+                    res.status(409).json({
+                        "status": "error",
+                        "message": "Email already in use",
+                        "description": "The request could not be completed due to a conflict with the current state of the resource",
+                        "error": "This email is active in another admin . Please use a different one.",
+                        "status_code": 409
+                    })
+                    return
+
+                }
             }
             else {
-                res.status(400).json(
-                    {
-                        "status": "error",
-                        "message": "Invalid input",
-                        "description": "Invalid syntax for this request was provided",
-                        "errors": [{
-                            "field": "employee_id",
-                            "error": "This field is required"
-                        }],
-                        "status_code": 400
-                    }
-                )
-                return
+                if (!employee_id) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "employee_id",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                } if (!email) {
+                    res.status(400).json(
+                        {
+                            "status": "error",
+                            "message": "Invalid input",
+                            "description": "Invalid syntax for this request was provided",
+                            "errors": [{
+                                "field": "email",
+                                "error": "This field is required"
+                            }],
+                            "status_code": 400
+                        }
+                    )
+                    return
+                }
+
 
             }
         }
@@ -1622,7 +1659,7 @@ router.post('/resetPassword', authenticateToken, async (req, res) => {
                             $cond: {
                                 if: { $eq: ["$admin_id", req.user.id] },
                                 then: { $literal: hPassword },
-                                else: "$password" 
+                                else: "$password"
                             }
                         }
                     }
@@ -1853,6 +1890,7 @@ router.post('/resetPin', authenticateToken, async (req, res) => {
         await client.close()
     }
 })
+
 
 
 module.exports = router;

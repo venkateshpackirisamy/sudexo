@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import ToastManager, { Toast } from "toastify-react-native";
 const { height, width } = Dimensions.get('window');
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function Register() {
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')

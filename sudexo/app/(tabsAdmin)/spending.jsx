@@ -13,7 +13,7 @@ import usePaginationEmp from "../usePaginationSpnd";
 import colors from "../../assets/color";
 import { useIsFocused } from "@react-navigation/native";
 const uri = process.env.EXPO_PUBLIC_API_URL;
-export default function Index() {
+export default function spending() {
   const item = useLocalSearchParams()
   const [userName, setUserName] = useState()
   const [token, setToken] = useState()
